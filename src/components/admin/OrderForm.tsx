@@ -51,6 +51,23 @@ const empty: OrderForm = {
   comment: "",
 };
 
+const inputCls = (err?: string) =>
+  `w-full bg-muted/30 border rounded-lg px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 outline-none focus:border-blue-500/60 transition-colors ${err ? "border-red-500/50" : "border-border"}`;
+
+function Field({
+  label, required, error, children,
+}: { label: string; required?: boolean; error?: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="text-[10px] mono uppercase tracking-wider text-muted-foreground block mb-1.5">
+        {label}{required && <span className="text-red-400 ml-0.5">*</span>}
+      </label>
+      {children}
+      {error && <div className="text-xs text-red-400 mt-1">{error}</div>}
+    </div>
+  );
+}
+
 interface Props {
   onSave: (order: OrderForm) => void;
   saving?: boolean;
@@ -100,21 +117,6 @@ export default function OrderForm({ onSave, saving }: Props) {
     setForm(empty);
     setErrors({});
   };
-
-  const Field = ({
-    label, required, error, children,
-  }: { label: string; required?: boolean; error?: string; children: React.ReactNode }) => (
-    <div>
-      <label className="text-[10px] mono uppercase tracking-wider text-muted-foreground block mb-1.5">
-        {label}{required && <span className="text-red-400 ml-0.5">*</span>}
-      </label>
-      {children}
-      {error && <div className="text-xs text-red-400 mt-1">{error}</div>}
-    </div>
-  );
-
-  const inputCls = (err?: string) =>
-    `w-full bg-muted/30 border rounded-lg px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 outline-none focus:border-blue-500/60 transition-colors ${err ? "border-red-500/50" : "border-border"}`;
 
   return (
     <div className="bg-card border border-border rounded-xl overflow-hidden">
@@ -355,9 +357,9 @@ export default function OrderForm({ onSave, saving }: Props) {
           </div>
           <div className="flex gap-3 flex-wrap mb-3">
             {[
-              { key: "booster", label: "Бустер", icon: "Baby" },
-              { key: "childSeat", label: "Детское кресло", icon: "Baby" },
-              { key: "animal", label: "Животное", icon: "PawPrint" },
+              { key: "booster", label: "Бустер" },
+              { key: "childSeat", label: "Детское кресло" },
+              { key: "animal", label: "Животное" },
             ].map((opt) => {
               const val = form[opt.key as keyof OrderForm] as boolean;
               return (
