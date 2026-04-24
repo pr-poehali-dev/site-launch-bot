@@ -1,0 +1,23 @@
+CREATE TABLE t_p16564901_site_launch_bot.orders (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  from_city VARCHAR(255) DEFAULT '',
+  to_city VARCHAR(255) DEFAULT '',
+  pickup TEXT NOT NULL,
+  dropoff TEXT NOT NULL,
+  stops JSONB DEFAULT '[]',
+  trip_date DATE NOT NULL,
+  trip_time VARCHAR(10) DEFAULT '',
+  price NUMERIC(10,2) DEFAULT 0,
+  tariff VARCHAR(100) DEFAULT 'Комфорт',
+  commission VARCHAR(10) DEFAULT '15%',
+  driver_amount NUMERIC(10,2) DEFAULT 0,
+  phone VARCHAR(50) NOT NULL,
+  passengers INTEGER DEFAULT 1,
+  luggage INTEGER DEFAULT 1,
+  booster BOOLEAN DEFAULT FALSE,
+  child_seat BOOLEAN DEFAULT FALSE,
+  animal BOOLEAN DEFAULT FALSE,
+  comment TEXT DEFAULT '',
+  status VARCHAR(50) DEFAULT 'new',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);

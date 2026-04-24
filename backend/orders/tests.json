@@ -1,0 +1,29 @@
+{
+  "tests": [
+    {
+      "name": "GET orders list",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 200,
+      "expectedBody": {"orders": []},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "POST create order",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "pickup": "ул. Ленина 1",
+        "dropoff": "ул. Пушкина 5",
+        "phone": "+79001234567",
+        "trip_date": "2026-04-25",
+        "price": "1500",
+        "tariff": "Комфорт",
+        "commission": "15%"
+      },
+      "expectedStatus": 201,
+      "expectedBody": {"order": {"status": "new"}},
+      "bodyMatcher": "partial"
+    }
+  ]
+}
