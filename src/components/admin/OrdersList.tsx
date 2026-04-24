@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 
+const TG_API = "https://functions.poehali.dev/ed779d34-4d03-4202-baa8-7d25732d1aaa";
+
 interface Order {
   id: string;
   from_city: string;
@@ -41,6 +43,13 @@ export default function OrdersList({ apiUrl }: Props) {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Order | null>(null);
   const [filterStatus, setFilterStatus] = useState("all");
+  const [sending, setSending] = useState(false);
+  const [toast, setToast] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  const showToast = (type: "success" | "error", text: string) => {
+    setToast({ type, text });
+    setTimeout(() => setToast(null), 3000);
+  };
 
   const fetchOrders = async () => {
     setLoading(true);
@@ -75,6 +84,50 @@ export default function OrdersList({ apiUrl }: Props) {
     });
   };
 
+  const sendToTelegram = async (order: Order) => {
+    setSending(true);
+    try {
+      const res = await fetch(TG_API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "now",
+          order: {
+            from_city: order.from_city,
+            to_city: order.to_city,
+            pickup: order.pickup,
+            dropoff: order.dropoff,
+            trip_date: order.trip_date,
+            trip_time: order.trip_time,
+            price: order.price,
+            tariff: order.tariff,
+            commission: order.commission,
+            phone: order.phone,
+            passengers: order.passengers,
+            luggage: order.luggage,
+            booster: order.booster,
+            child_seat: order.child_seat,
+            animal: order.animal,
+            comment: order.comment,
+            id: order.id,
+          },
+        }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        showToast("success", "Заявка отправлена в группу!");
+        // Обновляем статус на "assigned"
+        await updateStatus(order.id, "assigned");
+      } else {
+        showToast("error", `Ошибка: ${data.error || "не удалось отправить"}`);
+      }
+    } catch {
+      showToast("error", "Ошибка отправки в Telegram");
+    } finally {
+      setSending(false);
+    }
+  };
+
   const filtered = filterStatus === "all" ? orders : orders.filter((o) => o.status === filterStatus);
 
   const formatDate = (d: string) => {
@@ -85,6 +138,19 @@ export default function OrdersList({ apiUrl }: Props) {
 
   return (
     <div className="space-y-4">
+      {/* Toast */}
+      {toast && (
+        <div className={`flex items-center gap-3 px-4 py-3 border rounded-lg animate-slide-up ${
+          toast.type === "success" ? "bg-green-500/10 border-green-500/30" : "bg-red-500/10 border-red-500/30"
+        }`}>
+          <Icon name={toast.type === "success" ? "CheckCircle" : "AlertCircle"} size={16}
+            className={toast.type === "success" ? "text-green-400" : "text-red-400"} />
+          <span className={`text-sm font-medium ${toast.type === "success" ? "text-green-400" : "text-red-400"}`}>
+            {toast.text}
+          </span>
+        </div>
+      )}
+
       {/* Filter */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1 bg-muted/50 border border-border rounded-lg p-1">
@@ -235,6 +301,18 @@ export default function OrdersList({ apiUrl }: Props) {
           {selected.comment && (
             <div className="mb-4 p-3 bg-muted/30 rounded-lg text-xs text-muted-foreground">{selected.comment}</div>
           )}
+
+          {/* Отправить в Telegram */}
+          <div className="mb-4 pb-4 border-b border-border">
+            <button
+              onClick={() => sendToTelegram(selected)}
+              disabled={sending}
+              className="flex items-center gap-2 px-4 py-2.5 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-all"
+            >
+              <Icon name={sending ? "Loader" : "Send"} size={15} className={sending ? "animate-spin" : ""} />
+              {sending ? "Отправляю..." : "Отправить в группу"}
+            </button>
+          </div>
 
           {/* Status change */}
           <div>
