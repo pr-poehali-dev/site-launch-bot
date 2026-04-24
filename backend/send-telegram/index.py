@@ -1,12 +1,12 @@
 """
-Отправляет заявку на поездку в Telegram-группу диспетчеров.
-Режим: 'now' — сразу в работу, 'moderation' — на модерацию.
+Отправляет заявку на поездку в Telegram-группу с inline-кнопкой «Принять заказ».
 """
 import json
 import os
 import urllib.request
 import urllib.error
 
+BOT_USERNAME = "zacazubot"
 
 CORS_HEADERS = {
     "Access-Control-Allow-Origin": "*",
@@ -16,21 +16,14 @@ CORS_HEADERS = {
 }
 
 
-def tg_send(text: str, parse_mode: str = "HTML") -> dict:
+def tg_request(method: str, payload: dict) -> dict:
     token = os.environ["TELEGRAM_BOT_TOKEN"]
-    chat_id = os.environ["TELEGRAM_GROUP_ID"]
-    print(f"[TG] Sending to chat_id={chat_id}")
-    url = f"https://api.telegram.org/bot{token}/sendMessage"
-    payload = json.dumps({
-        "chat_id": chat_id,
-        "text": text,
-        "parse_mode": parse_mode,
-    }).encode()
-    req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"})
+    url = f"https://api.telegram.org/bot{token}/{method}"
+    data = json.dumps(payload).encode()
+    req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
     try:
         with urllib.request.urlopen(req, timeout=10) as resp:
             result = json.loads(resp.read())
-            print(f"[TG] Success message_id={result.get('result', {}).get('message_id')}")
             return result
     except urllib.error.HTTPError as e:
         body = e.read().decode()
@@ -116,14 +109,35 @@ def handler(event: dict, context) -> dict:
     if not order:
         return {"statusCode": 400, "headers": CORS_HEADERS, "body": json.dumps({"error": "order required"})}
 
+    chat_id = os.environ["TELEGRAM_GROUP_ID"]
+    order_id = order.get("id", "")
     text = format_order(order, mode)
 
+    # Формируем deep link — водитель нажимает кнопку, открывается бот с параметром заказа
+    deep_link = f"https://t.me/{BOT_USERNAME}?start=accept_{order_id}"
+
+    payload = {
+        "chat_id": chat_id,
+        "text": text,
+        "parse_mode": "HTML",
+        "reply_markup": {
+            "inline_keyboard": [[
+                {
+                    "text": "✅ Принять заказ",
+                    "url": deep_link
+                }
+            ]]
+        }
+    }
+
     try:
-        result = tg_send(text)
+        result = tg_request("sendMessage", payload)
+        msg_id = result.get("result", {}).get("message_id")
+        print(f"[TG] Sent message_id={msg_id} with accept button order_id={order_id}")
         return {
             "statusCode": 200,
             "headers": CORS_HEADERS,
-            "body": json.dumps({"ok": True, "message_id": result.get("result", {}).get("message_id")}),
+            "body": json.dumps({"ok": True, "message_id": msg_id}),
         }
     except Exception as e:
         print(f"[TG] Failed: {e}")
