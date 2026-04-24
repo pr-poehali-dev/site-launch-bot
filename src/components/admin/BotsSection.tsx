@@ -16,14 +16,7 @@ interface Bot {
   environment: string;
 }
 
-const initialBots: Bot[] = [
-  { id: "bot-001", name: "MarketBot Alpha", status: "active", version: "v2.4.1", uptime: "12д 4ч", requests: 48320, cpu: 12, memory: 34, lastDeploy: "20.04.2026", environment: "production" },
-  { id: "bot-002", name: "SupportBot X", status: "active", version: "v1.9.3", uptime: "3д 18ч", requests: 12440, cpu: 8, memory: 21, lastDeploy: "22.04.2026", environment: "production" },
-  { id: "bot-003", name: "AnalyticsBot", status: "stopped", version: "v3.1.0", uptime: "—", requests: 0, cpu: 0, memory: 0, lastDeploy: "15.04.2026", environment: "staging" },
-  { id: "bot-004", name: "NewsParser Pro", status: "error", version: "v1.2.7", uptime: "0ч 12м", requests: 220, cpu: 2, memory: 5, lastDeploy: "23.04.2026", environment: "production" },
-  { id: "bot-005", name: "CryptoTracker", status: "active", version: "v4.0.0", uptime: "7д 2ч", requests: 91200, cpu: 22, memory: 48, lastDeploy: "17.04.2026", environment: "production" },
-  { id: "bot-006", name: "ReportBot", status: "stopped", version: "v2.0.5", uptime: "—", requests: 0, cpu: 0, memory: 0, lastDeploy: "10.04.2026", environment: "staging" },
-];
+const initialBots: Bot[] = [];
 
 const statusConfig: Record<BotStatus, { label: string; color: string; dot: string }> = {
   active: { label: "Активен", color: "text-green-400", dot: "bg-green-500 status-dot-active" },
