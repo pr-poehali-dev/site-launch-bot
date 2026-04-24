@@ -1,0 +1,17 @@
+{
+  "tests": [
+    {
+      "name": "Create payment",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "order_id": "test-order-123",
+        "amount": 150.00,
+        "description": "Комиссия за заказ test-order-123"
+      },
+      "expectedStatus": 200,
+      "expectedBody": {"ok": true},
+      "bodyMatcher": "partial"
+    }
+  ]
+}
