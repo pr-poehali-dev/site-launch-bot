@@ -69,8 +69,8 @@ function Field({
 }
 
 interface Props {
-  onSave: (order: OrderForm) => void;
-  saving?: boolean;
+  onSave: (order: OrderForm, mode: "now" | "moderation") => void;
+  saving?: "now" | "moderation" | null;
 }
 
 export default function OrderForm({ onSave, saving }: Props) {
@@ -109,8 +109,8 @@ export default function OrderForm({ onSave, saving }: Props) {
     return Object.keys(e).length === 0;
   };
 
-  const handleSubmit = () => {
-    if (validate()) onSave(form);
+  const handleSubmit = (mode: "now" | "moderation") => {
+    if (validate()) onSave(form, mode);
   };
 
   const reset = () => {
@@ -393,22 +393,32 @@ export default function OrderForm({ onSave, saving }: Props) {
       </div>
 
       {/* Footer */}
-      <div className="px-6 py-4 border-t border-border flex items-center justify-between bg-muted/10">
-        <div className="text-xs text-muted-foreground">
+      <div className="px-6 py-4 border-t border-border bg-muted/10">
+        <div className="text-xs text-muted-foreground mb-3">
           {form.pickup && form.dropoff ? (
             <span className="text-foreground mono">{form.pickup} → {form.dropoff}</span>
           ) : (
             "Заполните обязательные поля"
           )}
         </div>
-        <button
-          onClick={handleSubmit}
-          disabled={saving}
-          className="flex items-center gap-2 px-6 py-2.5 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-all"
-        >
-          <Icon name={saving ? "Loader" : "Send"} size={15} className={saving ? "animate-spin" : ""} />
-          {saving ? "Сохраняю..." : "Создать заявку"}
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={() => handleSubmit("moderation")}
+            disabled={!!saving}
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-muted/50 hover:bg-muted border border-border disabled:opacity-50 text-foreground text-sm font-semibold rounded-lg transition-all"
+          >
+            <Icon name={saving === "moderation" ? "Loader" : "Clock"} size={15} className={saving === "moderation" ? "animate-spin" : "text-yellow-400"} />
+            {saving === "moderation" ? "Отправляю..." : "На модерацию"}
+          </button>
+          <button
+            onClick={() => handleSubmit("now")}
+            disabled={!!saving}
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-all"
+          >
+            <Icon name={saving === "now" ? "Loader" : "Zap"} size={15} className={saving === "now" ? "animate-spin" : ""} />
+            {saving === "now" ? "Отправляю..." : "Отправить сейчас"}
+          </button>
+        </div>
       </div>
     </div>
   );

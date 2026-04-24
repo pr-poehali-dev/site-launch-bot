@@ -5,6 +5,7 @@ import OrderForm from "@/components/admin/OrderForm";
 import OrdersList from "@/components/admin/OrdersList";
 
 const ORDERS_API = "https://functions.poehali.dev/55980dcf-a1ce-4d33-acc5-93fea15cb52c";
+const TG_API = "https://functions.poehali.dev/ed779d34-4d03-4202-baa8-7d25732d1aaa";
 
 type Section = "orders_new" | "orders_list" | "bots";
 
@@ -17,11 +18,16 @@ const navItems: { id: Section; label: string; icon: string }[] = [
 export default function Index() {
   const [section, setSection] = useState<Section>("orders_new");
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [successId, setSuccessId] = useState<string | null>(null);
+  const [saving, setSaving] = useState<null | "now" | "moderation">(null);
+  const [toast, setToast] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-  const handleSaveOrder = async (form: Record<string, unknown>) => {
-    setSaving(true);
+  const showToast = (type: "success" | "error", text: string) => {
+    setToast({ type, text });
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  const handleSaveOrder = async (form: Record<string, unknown>, mode: "now" | "moderation") => {
+    setSaving(mode);
     try {
       const body = {
         from_city: form.from,
@@ -42,18 +48,34 @@ export default function Index() {
         animal: form.animal,
         comment: form.comment,
       };
+
+      // Сохраняем в БД
       const res = await fetch(ORDERS_API, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
       const data = await res.json();
-      if (data.order?.id) {
-        setSuccessId(data.order.id);
-        setTimeout(() => { setSuccessId(null); setSection("orders_list"); }, 1800);
+
+      if (!data.order?.id) {
+        showToast("error", "Ошибка сохранения заявки");
+        return;
       }
+
+      // Отправляем в Telegram
+      await fetch(TG_API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode, order: { ...body, id: data.order.id } }),
+      });
+
+      const modeLabel = mode === "now" ? "отправлена в работу" : "отправлена на модерацию";
+      showToast("success", `Заявка ${modeLabel}!`);
+      setTimeout(() => setSection("orders_list"), 1500);
+    } catch {
+      showToast("error", "Ошибка отправки в Telegram");
     } finally {
-      setSaving(false);
+      setSaving(null);
     }
   };
 
@@ -63,7 +85,6 @@ export default function Index() {
     <div className="flex h-screen bg-background overflow-hidden grid-bg">
       {/* Sidebar */}
       <aside className={`flex flex-col border-r border-border bg-[hsl(220,20%,6%)] transition-all duration-300 ${sidebarOpen ? "w-60" : "w-16"}`}>
-        {/* Logo */}
         <div className="flex items-center gap-3 px-4 py-5 border-b border-border">
           <div className="w-8 h-8 rounded bg-[hsl(213,90%,55%)] flex items-center justify-center flex-shrink-0 pulse-blue">
             <Icon name="Cpu" size={16} className="text-white" />
@@ -76,7 +97,6 @@ export default function Index() {
           )}
         </div>
 
-        {/* Nav */}
         <nav className="flex-1 py-4 space-y-0.5 px-2">
           {navItems.map((item) => {
             const isActive = section === item.id;
@@ -98,7 +118,6 @@ export default function Index() {
           })}
         </nav>
 
-        {/* Bottom */}
         <div className="p-3 border-t border-border space-y-1">
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -123,7 +142,6 @@ export default function Index() {
 
       {/* Main */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
         <header className="flex items-center justify-between px-6 py-4 border-b border-border bg-card/50 backdrop-blur-sm flex-shrink-0">
           <div>
             <h1 className="text-base font-semibold text-foreground">{sectionLabel}</h1>
@@ -137,16 +155,24 @@ export default function Index() {
           </div>
         </header>
 
-        {/* Success toast */}
-        {successId && (
-          <div className="mx-6 mt-4 flex items-center gap-3 px-4 py-3 bg-green-500/10 border border-green-500/30 rounded-lg animate-slide-up">
-            <Icon name="CheckCircle" size={16} className="text-green-400" />
-            <span className="text-sm text-green-400 font-medium">Заявка создана успешно!</span>
-            <span className="text-xs text-muted-foreground mono ml-auto">{successId.slice(0, 8)}...</span>
+        {/* Toast */}
+        {toast && (
+          <div className={`mx-6 mt-4 flex items-center gap-3 px-4 py-3 border rounded-lg animate-slide-up ${
+            toast.type === "success"
+              ? "bg-green-500/10 border-green-500/30"
+              : "bg-red-500/10 border-red-500/30"
+          }`}>
+            <Icon
+              name={toast.type === "success" ? "CheckCircle" : "AlertCircle"}
+              size={16}
+              className={toast.type === "success" ? "text-green-400" : "text-red-400"}
+            />
+            <span className={`text-sm font-medium ${toast.type === "success" ? "text-green-400" : "text-red-400"}`}>
+              {toast.text}
+            </span>
           </div>
         )}
 
-        {/* Content */}
         <main className="flex-1 overflow-y-auto p-6 scrollbar-thin">
           <div className="animate-slide-up">
             {section === "orders_new" && (

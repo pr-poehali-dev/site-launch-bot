@@ -1,0 +1,33 @@
+{
+  "tests": [
+    {
+      "name": "Send order to Telegram",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "mode": "moderation",
+        "order": {
+          "from_city": "Москва",
+          "to_city": "Питер",
+          "pickup": "ул. Ленина 1",
+          "dropoff": "ул. Пушкина 5",
+          "date": "2026-04-25",
+          "time": "10:00",
+          "price": "1500",
+          "tariff": "Комфорт",
+          "commission": "15%",
+          "phone": "+79001234567",
+          "passengers": 2,
+          "luggage": 1,
+          "booster": false,
+          "child_seat": false,
+          "animal": false,
+          "comment": "Тест"
+        }
+      },
+      "expectedStatus": 200,
+      "expectedBody": {"ok": true},
+      "bodyMatcher": "partial"
+    }
+  ]
+}
