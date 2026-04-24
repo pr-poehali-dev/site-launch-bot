@@ -7,13 +7,24 @@ import OrdersList from "@/components/admin/OrdersList";
 const ORDERS_API = "https://functions.poehali.dev/55980dcf-a1ce-4d33-acc5-93fea15cb52c";
 const TG_API = "https://functions.poehali.dev/ed779d34-4d03-4202-baa8-7d25732d1aaa";
 
-type Section = "orders_new" | "orders_list" | "bots";
+export type Section = "orders_new" | "all" | "on_sale" | "in_progress" | "closed" | "done" | "bots";
 
-const navItems: { id: Section; label: string; icon: string }[] = [
+const navItems: { id: Section; label: string; icon: string; status?: string; divider?: boolean }[] = [
   { id: "orders_new", label: "Новая заявка", icon: "Plus" },
-  { id: "orders_list", label: "Заявки", icon: "ClipboardList" },
-  { id: "bots", label: "Боты", icon: "Bot" },
+  { id: "all", label: "Все заказы", icon: "ClipboardList", divider: true },
+  { id: "on_sale", label: "На продаже", icon: "Tag", status: "on_sale" },
+  { id: "in_progress", label: "Выполняется", icon: "Car", status: "in_progress" },
+  { id: "closed", label: "Закрыт", icon: "XCircle", status: "closed" },
+  { id: "done", label: "Завершен", icon: "CheckCircle", status: "done" },
+  { id: "bots", label: "Боты", icon: "Bot", divider: true },
 ];
+
+const sectionColors: Partial<Record<Section, string>> = {
+  on_sale: "text-yellow-400",
+  in_progress: "text-green-400",
+  closed: "text-red-400",
+  done: "text-muted-foreground",
+};
 
 export default function Index() {
   const [section, setSection] = useState<Section>("orders_new");
@@ -49,7 +60,6 @@ export default function Index() {
         comment: form.comment,
       };
 
-      // Сохраняем в БД
       const res = await fetch(ORDERS_API, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -62,7 +72,6 @@ export default function Index() {
         return;
       }
 
-      // Отправляем в Telegram только если режим "сейчас"
       if (mode === "now") {
         const tgRes = await fetch(TG_API, {
           method: "POST",
@@ -70,18 +79,23 @@ export default function Index() {
           body: JSON.stringify({ mode, order: { ...body, id: data.order.id } }),
         });
         const tgData = await tgRes.json();
-
         if (!tgData.ok) {
           showToast("error", `Ошибка Telegram: ${tgData.error || "неизвестная ошибка"}`);
           return;
         }
+        // Обновляем статус на "на продаже"
+        await fetch(ORDERS_API, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: data.order.id, status: "on_sale" }),
+        });
       }
 
       const modeLabel = mode === "now" ? "отправлена в работу" : "сохранена на модерацию";
       showToast("success", `Заявка ${modeLabel}!`);
-      setTimeout(() => setSection("orders_list"), 1500);
+      setTimeout(() => setSection(mode === "now" ? "on_sale" : "all"), 1500);
     } catch {
-      showToast("error", "Ошибка отправки в Telegram");
+      showToast("error", "Ошибка отправки");
     } finally {
       setSaving(null);
     }
@@ -105,23 +119,30 @@ export default function Index() {
           )}
         </div>
 
-        <nav className="flex-1 py-4 space-y-0.5 px-2">
+        <nav className="flex-1 py-4 px-2 space-y-0.5 overflow-y-auto">
           {navItems.map((item) => {
             const isActive = section === item.id;
+            const colorCls = sectionColors[item.id] ?? "";
             return (
-              <button
-                key={item.id}
-                onClick={() => setSection(item.id)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded transition-all duration-150 relative
-                  ${isActive
-                    ? "bg-blue-500/10 text-blue-400"
-                    : "text-[hsl(215,15%,55%)] hover:bg-[hsl(220,15%,12%)] hover:text-[hsl(210,20%,85%)]"
-                  }`}
-              >
-                {isActive && <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-blue-400 rounded-r" />}
-                <Icon name={item.icon} size={18} className="flex-shrink-0" />
-                {sidebarOpen && <span className="text-sm font-medium flex-1 text-left animate-fade-in">{item.label}</span>}
-              </button>
+              <div key={item.id}>
+                {item.divider && sidebarOpen && (
+                  <div className="text-[9px] mono uppercase tracking-widest text-muted-foreground/40 px-3 pt-4 pb-1">
+                    {item.id === "all" ? "Заказы" : "Система"}
+                  </div>
+                )}
+                <button
+                  onClick={() => setSection(item.id)}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded transition-all duration-150 relative
+                    ${isActive
+                      ? "bg-blue-500/10 text-blue-400"
+                      : `text-[hsl(215,15%,55%)] hover:bg-[hsl(220,15%,12%)] hover:text-[hsl(210,20%,85%)]`
+                    }`}
+                >
+                  {isActive && <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-blue-400 rounded-r" />}
+                  <Icon name={item.icon} size={18} className={`flex-shrink-0 ${isActive ? "" : colorCls}`} />
+                  {sidebarOpen && <span className="text-sm font-medium flex-1 text-left animate-fade-in">{item.label}</span>}
+                </button>
+              </div>
             );
           })}
         </nav>
@@ -163,18 +184,12 @@ export default function Index() {
           </div>
         </header>
 
-        {/* Toast */}
         {toast && (
           <div className={`mx-6 mt-4 flex items-center gap-3 px-4 py-3 border rounded-lg animate-slide-up ${
-            toast.type === "success"
-              ? "bg-green-500/10 border-green-500/30"
-              : "bg-red-500/10 border-red-500/30"
+            toast.type === "success" ? "bg-green-500/10 border-green-500/30" : "bg-red-500/10 border-red-500/30"
           }`}>
-            <Icon
-              name={toast.type === "success" ? "CheckCircle" : "AlertCircle"}
-              size={16}
-              className={toast.type === "success" ? "text-green-400" : "text-red-400"}
-            />
+            <Icon name={toast.type === "success" ? "CheckCircle" : "AlertCircle"} size={16}
+              className={toast.type === "success" ? "text-green-400" : "text-red-400"} />
             <span className={`text-sm font-medium ${toast.type === "success" ? "text-green-400" : "text-red-400"}`}>
               {toast.text}
             </span>
@@ -186,9 +201,11 @@ export default function Index() {
             {section === "orders_new" && (
               <OrderForm onSave={handleSaveOrder} saving={saving} />
             )}
-            {section === "orders_list" && (
-              <OrdersList apiUrl={ORDERS_API} />
-            )}
+            {section === "all" && <OrdersList apiUrl={ORDERS_API} filterStatus="all" tgApiUrl={TG_API} />}
+            {section === "on_sale" && <OrdersList apiUrl={ORDERS_API} filterStatus="on_sale" tgApiUrl={TG_API} />}
+            {section === "in_progress" && <OrdersList apiUrl={ORDERS_API} filterStatus="in_progress" tgApiUrl={TG_API} />}
+            {section === "closed" && <OrdersList apiUrl={ORDERS_API} filterStatus="closed" tgApiUrl={TG_API} />}
+            {section === "done" && <OrdersList apiUrl={ORDERS_API} filterStatus="done" tgApiUrl={TG_API} />}
             {section === "bots" && <BotsSection />}
           </div>
         </main>

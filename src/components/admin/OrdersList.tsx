@@ -1,8 +1,6 @@
 import { useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 
-const TG_API = "https://functions.poehali.dev/ed779d34-4d03-4202-baa8-7d25732d1aaa";
-
 interface Order {
   id: string;
   from_city: string;
@@ -27,22 +25,25 @@ interface Order {
 }
 
 const statusConfig: Record<string, { label: string; color: string; bg: string }> = {
-  new: { label: "Новая", color: "text-blue-400", bg: "bg-blue-500/10 border-blue-500/30" },
-  assigned: { label: "Назначена", color: "text-yellow-400", bg: "bg-yellow-500/10 border-yellow-500/30" },
-  in_progress: { label: "В пути", color: "text-green-400", bg: "bg-green-500/10 border-green-500/30" },
-  done: { label: "Выполнена", color: "text-muted-foreground", bg: "bg-muted/30 border-border" },
-  cancelled: { label: "Отменена", color: "text-red-400", bg: "bg-red-500/10 border-red-500/30" },
+  new:         { label: "Новая",       color: "text-blue-400",         bg: "bg-blue-500/10 border-blue-500/30" },
+  on_sale:     { label: "На продаже",  color: "text-yellow-400",       bg: "bg-yellow-500/10 border-yellow-500/30" },
+  in_progress: { label: "Выполняется", color: "text-green-400",        bg: "bg-green-500/10 border-green-500/30" },
+  closed:      { label: "Закрыт",      color: "text-red-400",          bg: "bg-red-500/10 border-red-500/30" },
+  done:        { label: "Завершен",    color: "text-muted-foreground", bg: "bg-muted/30 border-border" },
 };
 
-const STATUSES = ["new", "assigned", "in_progress", "done", "cancelled"];
+const STATUSES = ["new", "on_sale", "in_progress", "closed", "done"];
 
-interface Props { apiUrl: string }
+interface Props {
+  apiUrl: string;
+  tgApiUrl: string;
+  filterStatus: string;
+}
 
-export default function OrdersList({ apiUrl }: Props) {
+export default function OrdersList({ apiUrl, tgApiUrl, filterStatus }: Props) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Order | null>(null);
-  const [filterStatus, setFilterStatus] = useState("all");
   const [sending, setSending] = useState(false);
   const [toast, setToast] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
@@ -62,7 +63,10 @@ export default function OrdersList({ apiUrl }: Props) {
     }
   };
 
-  useEffect(() => { fetchOrders(); }, []);
+  useEffect(() => {
+    fetchOrders();
+    setSelected(null);
+  }, [filterStatus]);
 
   const updateStatus = async (id: string, status: string) => {
     setOrders((prev) => prev.map((o) => o.id === id ? { ...o, status } : o));
@@ -87,7 +91,7 @@ export default function OrdersList({ apiUrl }: Props) {
   const sendToTelegram = async (order: Order) => {
     setSending(true);
     try {
-      const res = await fetch(TG_API, {
+      const res = await fetch(tgApiUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -116,8 +120,7 @@ export default function OrdersList({ apiUrl }: Props) {
       const data = await res.json();
       if (data.ok) {
         showToast("success", "Заявка отправлена в группу!");
-        // Обновляем статус на "assigned"
-        await updateStatus(order.id, "assigned");
+        await updateStatus(order.id, "on_sale");
       } else {
         showToast("error", `Ошибка: ${data.error || "не удалось отправить"}`);
       }
@@ -128,7 +131,9 @@ export default function OrdersList({ apiUrl }: Props) {
     }
   };
 
-  const filtered = filterStatus === "all" ? orders : orders.filter((o) => o.status === filterStatus);
+  const filtered = filterStatus === "all"
+    ? orders
+    : orders.filter((o) => o.status === filterStatus);
 
   const formatDate = (d: string) => {
     if (!d) return "—";
@@ -138,7 +143,6 @@ export default function OrdersList({ apiUrl }: Props) {
 
   return (
     <div className="space-y-4">
-      {/* Toast */}
       {toast && (
         <div className={`flex items-center gap-3 px-4 py-3 border rounded-lg animate-slide-up ${
           toast.type === "success" ? "bg-green-500/10 border-green-500/30" : "bg-red-500/10 border-red-500/30"
@@ -151,35 +155,13 @@ export default function OrdersList({ apiUrl }: Props) {
         </div>
       )}
 
-      {/* Filter */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1 bg-muted/50 border border-border rounded-lg p-1">
-          <button
-            onClick={() => setFilterStatus("all")}
-            className={`px-3 py-1.5 rounded text-xs font-medium transition-all ${filterStatus === "all" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
-          >
-            Все <span className="ml-1 mono opacity-60">{orders.length}</span>
-          </button>
-          {STATUSES.map((s) => {
-            const cfg = statusConfig[s];
-            const cnt = orders.filter((o) => o.status === s).length;
-            return (
-              <button
-                key={s}
-                onClick={() => setFilterStatus(s)}
-                className={`px-3 py-1.5 rounded text-xs font-medium transition-all ${filterStatus === s ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
-              >
-                {cfg.label} <span className="ml-1 mono opacity-60">{cnt}</span>
-              </button>
-            );
-          })}
-        </div>
+        <div className="text-xs text-muted-foreground mono">{filtered.length} заявок</div>
         <button onClick={fetchOrders} className="p-2 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all">
           <Icon name="RefreshCw" size={14} />
         </button>
       </div>
 
-      {/* Table */}
       <div className="bg-card border border-border rounded-xl overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-16 gap-3 text-muted-foreground">
@@ -190,16 +172,14 @@ export default function OrdersList({ apiUrl }: Props) {
           <div className="flex flex-col items-center justify-center py-16">
             <Icon name="ClipboardList" size={32} className="text-muted-foreground mb-3" />
             <div className="text-sm font-medium text-foreground mb-1">Нет заявок</div>
-            <div className="text-xs text-muted-foreground">Создайте первую заявку в разделе «Новая заявка»</div>
+            <div className="text-xs text-muted-foreground">В этом разделе пока пусто</div>
           </div>
         ) : (
           <table className="w-full">
             <thead>
               <tr className="border-b border-border">
                 {["Маршрут", "Дата / Время", "Тариф / Цена", "Клиент", "Статус", ""].map((h) => (
-                  <th key={h} className="text-left text-[11px] font-semibold text-muted-foreground uppercase tracking-wider px-4 py-3 mono">
-                    {h}
-                  </th>
+                  <th key={h} className="text-left text-[11px] font-semibold text-muted-foreground uppercase tracking-wider px-4 py-3 mono">{h}</th>
                 ))}
               </tr>
             </thead>
@@ -302,19 +282,17 @@ export default function OrdersList({ apiUrl }: Props) {
             <div className="mb-4 p-3 bg-muted/30 rounded-lg text-xs text-muted-foreground">{selected.comment}</div>
           )}
 
-          {/* Отправить в Telegram */}
           <div className="mb-4 pb-4 border-b border-border">
             <button
               onClick={() => sendToTelegram(selected)}
-              disabled={sending}
-              className="flex items-center gap-2 px-4 py-2.5 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-all"
+              disabled={sending || selected.status === "on_sale"}
+              className="flex items-center gap-2 px-4 py-2.5 bg-blue-500 hover:bg-blue-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-lg transition-all"
             >
               <Icon name={sending ? "Loader" : "Send"} size={15} className={sending ? "animate-spin" : ""} />
-              {sending ? "Отправляю..." : "Отправить в группу"}
+              {sending ? "Отправляю..." : selected.status === "on_sale" ? "Уже на продаже" : "Отправить в группу"}
             </button>
           </div>
 
-          {/* Status change */}
           <div>
             <div className="text-[10px] mono text-muted-foreground uppercase tracking-wider mb-2">Изменить статус</div>
             <div className="flex flex-wrap gap-2">
