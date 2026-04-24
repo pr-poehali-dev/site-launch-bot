@@ -1,7 +1,7 @@
 import { useState } from "react";
 import Icon from "@/components/ui/icon";
 
-const TARIFFS = ["Эконом", "Комфорт", "Бизнес", "Минивэн", "Срочный"];
+const TARIFFS = ["Срочный", "Стандарт", "Комфорт", "Бизнес", "Минивэн"];
 const COMMISSION_OPTIONS = ["10%", "15%", "20%", "25%"];
 
 interface Stop {
