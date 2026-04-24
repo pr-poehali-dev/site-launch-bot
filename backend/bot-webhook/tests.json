@@ -1,0 +1,13 @@
+{
+  "tests": [
+    {
+      "name": "Webhook ping",
+      "method": "POST",
+      "path": "/",
+      "body": {"update_id": 123},
+      "expectedStatus": 200,
+      "expectedBody": {"ok": true},
+      "bodyMatcher": "partial"
+    }
+  ]
+}
