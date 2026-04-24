@@ -62,21 +62,24 @@ export default function Index() {
         return;
       }
 
-      // Отправляем в Telegram
-      const tgRes = await fetch(TG_API, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mode, order: { ...body, id: data.order.id } }),
-      });
-      const tgData = await tgRes.json();
+      // Отправляем в Telegram только если режим "сейчас"
+      if (mode === "now") {
+        const tgRes = await fetch(TG_API, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ mode, order: { ...body, id: data.order.id } }),
+        });
+        const tgData = await tgRes.json();
 
-      if (tgData.ok) {
-        const modeLabel = mode === "now" ? "отправлена в работу" : "отправлена на модерацию";
-        showToast("success", `Заявка ${modeLabel}!`);
-        setTimeout(() => setSection("orders_list"), 1500);
-      } else {
-        showToast("error", `Ошибка Telegram: ${tgData.error || "неизвестная ошибка"}`);
+        if (!tgData.ok) {
+          showToast("error", `Ошибка Telegram: ${tgData.error || "неизвестная ошибка"}`);
+          return;
+        }
       }
+
+      const modeLabel = mode === "now" ? "отправлена в работу" : "сохранена на модерацию";
+      showToast("success", `Заявка ${modeLabel}!`);
+      setTimeout(() => setSection("orders_list"), 1500);
     } catch {
       showToast("error", "Ошибка отправки в Telegram");
     } finally {
