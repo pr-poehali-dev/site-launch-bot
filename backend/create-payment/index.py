@@ -1,6 +1,6 @@
 """
 Создаёт платёж в ЮКассе для оплаты комиссии водителем.
-Возвращает ссылку на оплату. v2
+Возвращает ссылку на оплату. v3
 """
 import json
 import os
@@ -19,9 +19,10 @@ CORS_HEADERS = {
 
 
 def create_payment(amount: float, order_id: str, description: str) -> dict:
-    shop_id = os.environ["YUKASSA_SHOP_ID"]
-    secret_key = os.environ["YUKASSA_SECRET_KEY"]
+    shop_id = os.environ["YUKASSA_SHOP_ID"].strip()
+    secret_key = os.environ["YUKASSA_SECRET_KEY"].strip()
 
+    print(f"[YK] shop_id='{shop_id}' key_prefix='{secret_key[:10]}...' key_len={len(secret_key)}")
     credentials = base64.b64encode(f"{shop_id}:{secret_key}".encode()).decode()
     idempotence_key = str(uuid.uuid4())
 
