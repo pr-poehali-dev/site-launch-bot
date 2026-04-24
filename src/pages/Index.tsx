@@ -63,15 +63,20 @@ export default function Index() {
       }
 
       // Отправляем в Telegram
-      await fetch(TG_API, {
+      const tgRes = await fetch(TG_API, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mode, order: { ...body, id: data.order.id } }),
       });
+      const tgData = await tgRes.json();
 
-      const modeLabel = mode === "now" ? "отправлена в работу" : "отправлена на модерацию";
-      showToast("success", `Заявка ${modeLabel}!`);
-      setTimeout(() => setSection("orders_list"), 1500);
+      if (tgData.ok) {
+        const modeLabel = mode === "now" ? "отправлена в работу" : "отправлена на модерацию";
+        showToast("success", `Заявка ${modeLabel}!`);
+        setTimeout(() => setSection("orders_list"), 1500);
+      } else {
+        showToast("error", `Ошибка Telegram: ${tgData.error || "неизвестная ошибка"}`);
+      }
     } catch {
       showToast("error", "Ошибка отправки в Telegram");
     } finally {

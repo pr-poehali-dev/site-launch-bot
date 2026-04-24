@@ -5,7 +5,7 @@
 import json
 import os
 import urllib.request
-import urllib.parse
+import urllib.error
 
 
 CORS_HEADERS = {
@@ -19,6 +19,7 @@ CORS_HEADERS = {
 def tg_send(text: str, parse_mode: str = "HTML") -> dict:
     token = os.environ["TELEGRAM_BOT_TOKEN"]
     chat_id = os.environ["TELEGRAM_GROUP_ID"]
+    print(f"[TG] Sending to chat_id={chat_id}")
     url = f"https://api.telegram.org/bot{token}/sendMessage"
     payload = json.dumps({
         "chat_id": chat_id,
@@ -26,8 +27,15 @@ def tg_send(text: str, parse_mode: str = "HTML") -> dict:
         "parse_mode": parse_mode,
     }).encode()
     req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=10) as resp:
-        return json.loads(resp.read())
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            result = json.loads(resp.read())
+            print(f"[TG] Success message_id={result.get('result', {}).get('message_id')}")
+            return result
+    except urllib.error.HTTPError as e:
+        body = e.read().decode()
+        print(f"[TG] HTTPError {e.code}: {body}")
+        raise Exception(f"Telegram API error {e.code}: {body}")
 
 
 def format_order(order: dict, mode: str) -> str:
@@ -47,8 +55,8 @@ def format_order(order: dict, mode: str) -> str:
         if stop_list:
             stops_text = f"\n{stop_list}"
 
-    date = order.get("date", "—")
-    time_val = order.get("time", "")
+    date = order.get("date", order.get("trip_date", "—"))
+    time_val = order.get("time", order.get("trip_time", ""))
     datetime_str = f"{date}" + (f" в {time_val}" if time_val else "")
 
     price = order.get("price", "0")
@@ -73,6 +81,9 @@ def format_order(order: dict, mode: str) -> str:
     comment = order.get("comment", "")
     comment_text = f"\n💬 <b>Комментарий:</b> {comment}" if comment else ""
 
+    price_fmt = str(int(float(price or 0)))
+    driver_fmt = str(driver_amount)
+
     return (
         f"{mode_label}\n"
         f"{'─' * 28}\n"
@@ -83,15 +94,15 @@ def format_order(order: dict, mode: str) -> str:
         f"{'─' * 28}\n"
         f"📅 <b>Дата:</b> {datetime_str}\n"
         f"🚖 <b>Тариф:</b> {tariff}\n"
-        f"💰 <b>Стоимость:</b> {int(float(price or 0)):,} ₽\n"
-        f"🤝 <b>Водитель получит:</b> {driver_amount:,} ₽ (комиссия {commission})\n"
+        f"💰 <b>Стоимость:</b> {price_fmt} ₽\n"
+        f"🤝 <b>Водитель получит:</b> {driver_fmt} ₽ (комиссия {commission})\n"
         f"{'─' * 28}\n"
         f"📞 <b>Клиент:</b> {phone}\n"
         f"👥 <b>Пассажиры:</b> {passengers} чел.\n"
         f"🧳 <b>Багаж:</b> {luggage} мест"
         f"{extras_text}"
         f"{comment_text}"
-    ).replace(",", " ")
+    )
 
 
 def handler(event: dict, context) -> dict:
@@ -100,16 +111,24 @@ def handler(event: dict, context) -> dict:
 
     body = json.loads(event.get("body") or "{}")
     order = body.get("order", {})
-    mode = body.get("mode", "moderation")  # 'now' или 'moderation'
+    mode = body.get("mode", "moderation")
 
     if not order:
         return {"statusCode": 400, "headers": CORS_HEADERS, "body": json.dumps({"error": "order required"})}
 
     text = format_order(order, mode)
-    result = tg_send(text)
 
-    return {
-        "statusCode": 200,
-        "headers": CORS_HEADERS,
-        "body": json.dumps({"ok": True, "message_id": result.get("result", {}).get("message_id")}),
-    }
+    try:
+        result = tg_send(text)
+        return {
+            "statusCode": 200,
+            "headers": CORS_HEADERS,
+            "body": json.dumps({"ok": True, "message_id": result.get("result", {}).get("message_id")}),
+        }
+    except Exception as e:
+        print(f"[TG] Failed: {e}")
+        return {
+            "statusCode": 500,
+            "headers": CORS_HEADERS,
+            "body": json.dumps({"ok": False, "error": str(e)}),
+        }
