@@ -243,7 +243,19 @@ export default function OrderForm({ onSave, saving }: Props) {
                 {TARIFFS.map((t) => (
                   <button
                     key={t}
-                    onClick={() => set("tariff", t)}
+                    onClick={() => {
+                      set("tariff", t);
+                      if (t === "Срочный") {
+                        const now = new Date();
+                        now.setMinutes(now.getMinutes() + 30);
+                        const hh = String(now.getHours()).padStart(2, "0");
+                        const mm = String(now.getMinutes()).padStart(2, "0");
+                        const yyyy = now.getFullYear();
+                        const mo = String(now.getMonth() + 1).padStart(2, "0");
+                        const dd = String(now.getDate()).padStart(2, "0");
+                        setForm((prev) => ({ ...prev, tariff: t, date: `${yyyy}-${mo}-${dd}`, time: `${hh}:${mm}` }));
+                      }
+                    }}
                     className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
                       form.tariff === t
                         ? "bg-blue-500/10 border-blue-500/40 text-blue-400"
