@@ -384,8 +384,7 @@ def handle_commission_paid(payment: dict, conn, cur):
 
     print(f"[COMMISSION] Paid order_id={order_id} chat_id={chat_id}")
 
-    tg_send(
-        chat_id,
+    text = (
         f"✅ <b>Комиссия оплачена — заказ подтверждён!</b>\n"
         f"{'━' * 26}\n"
         f"📍 <b>Маршрут:</b>\n"
@@ -405,6 +404,8 @@ def handle_commission_paid(payment: dict, conn, cur):
         f"{comment_text}"
     )
 
+    tg_send(chat_id, text)
+
 
 def handler(event: dict, context) -> dict:
     if event.get("httpMethod") == "OPTIONS":
@@ -422,6 +423,27 @@ def handler(event: dict, context) -> dict:
                 result = json.loads(resp.read())
             print(f"[WEBHOOK] setWebhook: {result}")
             return {"statusCode": 200, "headers": CORS_HEADERS, "body": json.dumps(result)}
+        if params.get("sendtest") == "1":
+            test_text = (
+                "✅ <b>Комиссия оплачена — заказ подтверждён!</b>\n"
+                "━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                "📍 <b>Маршрут:</b>\n"
+                "Санкт-Петербург → Выборг\n"
+                "  🟢 ул. Ленина, 12, подъезд 2\n"
+                "  🔴 пр. Победы, 45, ТЦ Радуга\n"
+                "━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                "📅 <b>Дата:</b> 2026-04-28 в 10:30\n"
+                "🚖 <b>Тариф:</b> Комфорт\n"
+                "💰 <b>Стоимость:</b> 3500 ₽\n"
+                "🤝 <b>Вы получите:</b> 2975 ₽ (комиссия 15%)\n"
+                "━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                "📞 <b>Клиент:</b> +7 921 123-45-67\n"
+                "👥 <b>Пассажиры:</b> 2 чел.\n"
+                "🧳 <b>Багаж:</b> 2 мест\n"
+                "💬 <b>Комментарий:</b> Большой чемодан, позвоните за 10 минут"
+            )
+            result = tg_send(6072837543, test_text)
+            return {"statusCode": 200, "headers": CORS_HEADERS, "body": json.dumps({"ok": True, "result": result})}
         return {"statusCode": 200, "headers": CORS_HEADERS, "body": json.dumps({"ok": True})}
 
     body = json.loads(event.get("body") or "{}")
