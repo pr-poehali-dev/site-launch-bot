@@ -388,10 +388,11 @@ def handle_accept_order(chat_id: int, order_id: str, driver_name: str, driver_us
 
     # Добавляем в очередь
     cur.execute(
-        f"SELECT COALESCE(MAX(position), 0) + 1 FROM {SCHEMA}.order_queue WHERE order_id = %s::uuid",
+        f"SELECT COALESCE(MAX(position), 0) + 1 AS next_pos FROM {SCHEMA}.order_queue WHERE order_id = %s::uuid",
         (order_id,)
     )
-    position = cur.fetchone()[0]
+    row = cur.fetchone()
+    position = row["next_pos"] if row else 1
 
     cur.execute(
         f"INSERT INTO {SCHEMA}.order_queue (order_id, driver_chat_id, driver_username, driver_name, position) VALUES (%s::uuid, %s, %s, %s, %s)",
