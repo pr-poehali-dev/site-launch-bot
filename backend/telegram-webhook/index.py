@@ -357,9 +357,9 @@ def handle_accept_order(chat_id: int, order_id: str, driver_name: str, driver_us
         tg_send(chat_id, "✅ Этот заказ уже выкуплен другим водителем.")
         return
 
-    # Проверяем — уже в очереди? (только активные записи)
+    # Проверяем — уже в очереди? (любой статус)
     cur.execute(
-        f"SELECT * FROM {SCHEMA}.order_queue WHERE order_id = %s::uuid AND driver_chat_id = %s AND status NOT IN ('expired')",
+        f"SELECT * FROM {SCHEMA}.order_queue WHERE order_id = %s::uuid AND driver_chat_id = %s",
         (order_id, chat_id)
     )
     existing_queue = cur.fetchone()
@@ -368,7 +368,6 @@ def handle_accept_order(chat_id: int, order_id: str, driver_name: str, driver_us
         existing_queue = dict(existing_queue)
         status = existing_queue.get("status")
         if status == "paying" and existing_queue.get("payment_url"):
-            # Уже платит — проверяем не истёк ли таймаут
             expires_at = existing_queue.get("payment_expires_at")
             now = datetime.now(timezone.utc)
             if expires_at and now < expires_at:
@@ -387,9 +386,35 @@ def handle_accept_order(chat_id: int, order_id: str, driver_name: str, driver_us
             cur.close(); conn.close()
             tg_send(chat_id, "✅ Вы уже оплатили комиссию по этому заказу.")
             return
-        else:
+        elif status == "waiting":
             cur.close(); conn.close()
             tg_send(chat_id, "👆 Вы уже в очереди на этот заказ. Ожидайте своей очереди.")
+            return
+        elif status == "expired":
+            # Водитель нажал повторно после истечения — переставляем в конец очереди
+            cur.execute(
+                f"SELECT COALESCE(MAX(position), 0) + 1 AS next_pos FROM {SCHEMA}.order_queue WHERE order_id = %s::uuid",
+                (order_id,)
+            )
+            row = cur.fetchone()
+            new_position = row["next_pos"] if row else 1
+            cur.execute(
+                f"UPDATE {SCHEMA}.order_queue SET status = 'waiting', position = %s, payment_id = NULL, payment_url = NULL, payment_expires_at = NULL, driver_message_id = NULL WHERE id = %s",
+                (new_position, existing_queue["id"])
+            )
+            conn.commit()
+            queue = get_queue_list(cur, order_id)
+            group_chat_id = os.environ.get("TELEGRAM_GROUP_ID", "")
+            update_group_message(order, queue, group_chat_id)
+            paying_exists = any(q["status"] == "paying" for q in queue)
+            accepted_driver = order.get("active_queue_driver_chat_id")
+            if not paying_exists and not accepted_driver:
+                cur.close(); conn.close()
+                notify_next_in_queue(order_id, group_chat_id)
+            else:
+                display = f"@{driver_username}" if driver_username else driver_name or "Вы"
+                tg_send(chat_id, f"👆 <b>{display}, вы снова в очереди!</b>\n\nВы на позиции #{new_position}. Ожидайте своей очереди.")
+                cur.close(); conn.close()
             return
 
     # Добавляем в очередь
