@@ -347,12 +347,40 @@ def handle_commission_paid(payment: dict, conn, cur):
     if not chat_id:
         return
 
-    pickup   = order.get("pickup", "—")
-    dropoff  = order.get("dropoff", "—")
-    price    = float(order.get("price") or 0)
-    trip_date = str(order.get("trip_date", ""))
-    trip_time = order.get("trip_time", "")
-    dt_str = trip_date + (f" в {trip_time}" if trip_time else "")
+    pickup     = order.get("pickup", "—")
+    dropoff    = order.get("dropoff", "—")
+    from_city  = order.get("from_city", "")
+    to_city    = order.get("to_city", "")
+    price      = float(order.get("price") or 0)
+    trip_date  = str(order.get("trip_date", ""))
+    trip_time  = order.get("trip_time", "")
+    dt_str     = trip_date + (f" в {trip_time}" if trip_time else "")
+    phone      = order.get("phone", "—")
+    passengers = order.get("passengers", 1)
+    luggage    = order.get("luggage", 1)
+    comment    = order.get("comment", "")
+    stops      = order.get("stops") or []
+    tariff     = order.get("tariff", "—")
+    commission = order.get("commission", "15%")
+    driver_amount = float(order.get("driver_amount") or 0)
+
+    route_line = f"{from_city} → {to_city}\n" if (from_city or to_city) else ""
+
+    stops_text = ""
+    if stops:
+        stop_list = "\n".join(f"  ↪️ {s.get('address', '')}" for s in stops if s.get("address"))
+        if stop_list:
+            stops_text = f"\n{stop_list}"
+
+    extras = []
+    if order.get("booster"):
+        extras.append("Бустер")
+    if order.get("child_seat"):
+        extras.append("Детское кресло")
+    if order.get("animal"):
+        extras.append("Животное")
+    extras_text = f"\n➕ <b>Доп:</b> {', '.join(extras)}" if extras else ""
+    comment_text = f"\n💬 <b>Комментарий:</b> {comment}" if comment else ""
 
     print(f"[COMMISSION] Paid order_id={order_id} chat_id={chat_id}")
 
@@ -360,10 +388,21 @@ def handle_commission_paid(payment: dict, conn, cur):
         chat_id,
         f"✅ <b>Комиссия оплачена — заказ подтверждён!</b>\n"
         f"{'━' * 26}\n"
-        f"📍 {pickup} → {dropoff}\n"
-        f"📅 {dt_str}\n"
-        f"💰 Стоимость поездки: <b>{int(price)} ₽</b>\n\n"
-        f"Заказ закреплён за вами. Счастливого пути! 🚀"
+        f"📍 <b>Маршрут:</b>\n"
+        f"{route_line}"
+        f"  🟢 {pickup}{stops_text}\n"
+        f"  🔴 {dropoff}\n"
+        f"{'━' * 26}\n"
+        f"📅 <b>Дата:</b> {dt_str}\n"
+        f"🚖 <b>Тариф:</b> {tariff}\n"
+        f"💰 <b>Стоимость:</b> {int(price)} ₽\n"
+        f"🤝 <b>Вы получите:</b> {int(driver_amount)} ₽ (комиссия {commission})\n"
+        f"{'━' * 26}\n"
+        f"📞 <b>Клиент:</b> {phone}\n"
+        f"👥 <b>Пассажиры:</b> {passengers} чел.\n"
+        f"🧳 <b>Багаж:</b> {luggage} мест"
+        f"{extras_text}"
+        f"{comment_text}"
     )
 
 

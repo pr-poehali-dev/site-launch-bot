@@ -81,20 +81,17 @@ def format_order(order: dict, mode: str) -> str:
         f"{mode_label}\n"
         f"{'─' * 28}\n"
         f"📍 <b>Маршрут:</b>\n"
-        f"{route_cities}"
-        f"  🟢 {pickup}{stops_text}\n"
-        f"  🔴 {dropoff}\n"
+        f"  🟢 {from_city or pickup}\n"
+        f"  🔴 {to_city or dropoff}\n"
         f"{'─' * 28}\n"
         f"📅 <b>Дата:</b> {datetime_str}\n"
         f"🚖 <b>Тариф:</b> {tariff}\n"
         f"💰 <b>Стоимость:</b> {price_fmt} ₽\n"
         f"🤝 <b>Водитель получит:</b> {driver_fmt} ₽ (комиссия {commission})\n"
         f"{'─' * 28}\n"
-        f"📞 <b>Клиент:</b> {phone}\n"
         f"👥 <b>Пассажиры:</b> {passengers} чел.\n"
         f"🧳 <b>Багаж:</b> {luggage} мест"
         f"{extras_text}"
-        f"{comment_text}"
     )
 
 
