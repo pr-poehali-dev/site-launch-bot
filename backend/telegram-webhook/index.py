@@ -370,6 +370,24 @@ def handle_accept_order(chat_id: int, order_id: str, driver_name: str, driver_us
         existing_queue = dict(existing_queue)
         status = existing_queue.get("status")
         if status == "paying" and existing_queue.get("payment_url"):
+            # Сначала проверяем реальный статус в ЮКассе
+            payment_id = existing_queue.get("payment_id", "")
+            if payment_id:
+                real_status = check_yukassa_payment_status(payment_id)
+                print(f"[YUKASSA] real payment status={real_status} payment_id={payment_id}")
+                if real_status == "succeeded":
+                    # Оплата прошла — активируем вручную
+                    cur2 = conn.cursor(cursor_factory=RealDictCursor)
+                    cur2.execute(f"SELECT * FROM {SCHEMA}.orders WHERE id = %s::uuid", (order_id,))
+                    order_row = cur2.fetchone()
+                    if order_row:
+                        handle_commission_paid(
+                            {"metadata": {"order_id": order_id, "driver_chat_id": str(chat_id)}, "amount": {}},
+                            conn, cur2
+                        )
+                    cur2.close()
+                    cur.close(); conn.close()
+                    return
             expires_at = existing_queue.get("payment_expires_at")
             now = datetime.now(timezone.utc)
             if expires_at and now < expires_at:
@@ -725,6 +743,24 @@ def handle_subscription_paid(payment: dict, conn, cur):
         f"Удачи на дорогах! 🚗💨",
         reply_markup={"remove_keyboard": True}
     )
+
+
+def check_yukassa_payment_status(payment_id: str) -> str:
+    """Проверяет реальный статус платежа в ЮКассе. Возвращает 'succeeded', 'pending', 'canceled' и т.д."""
+    shop_id = os.environ.get("YUKASSA_SHOP_ID", "")
+    secret  = os.environ.get("YUKASSA_SECRET_KEY", "")
+    creds   = base64.b64encode(f"{shop_id}:{secret}".encode()).decode()
+    req = urllib.request.Request(
+        f"https://api.yookassa.ru/v3/payments/{payment_id}",
+        headers={"Authorization": f"Basic {creds}"}
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read())
+            return data.get("status", "")
+    except Exception as e:
+        print(f"[YUKASSA] check_payment error: {e}")
+        return ""
 
 
 def handle_commission_paid(payment: dict, conn, cur):
