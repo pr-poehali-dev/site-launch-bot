@@ -1,13 +1,12 @@
 import { useState } from "react";
 import Icon from "@/components/ui/icon";
-import BotsSection from "@/components/admin/BotsSection";
 import OrderForm from "@/components/admin/OrderForm";
 import OrdersList from "@/components/admin/OrdersList";
 
 const ORDERS_API = "https://functions.poehali.dev/55980dcf-a1ce-4d33-acc5-93fea15cb52c";
 const TG_API = "https://functions.poehali.dev/ed779d34-4d03-4202-baa8-7d25732d1aaa";
 
-export type Section = "orders_new" | "all" | "on_sale" | "in_progress" | "closed" | "done" | "bots";
+export type Section = "orders_new" | "all" | "on_sale" | "in_progress" | "closed" | "done";
 
 const navItems: { id: Section; label: string; icon: string; status?: string; divider?: boolean }[] = [
   { id: "orders_new", label: "Новая заявка", icon: "Plus" },
@@ -16,7 +15,6 @@ const navItems: { id: Section; label: string; icon: string; status?: string; div
   { id: "in_progress", label: "Выполняется", icon: "Car", status: "in_progress" },
   { id: "closed", label: "Закрыт", icon: "XCircle", status: "closed" },
   { id: "done", label: "Завершен", icon: "CheckCircle", status: "done" },
-  { id: "bots", label: "Боты", icon: "Bot", divider: true },
 ];
 
 const sectionColors: Partial<Record<Section, string>> = {
@@ -206,7 +204,6 @@ export default function Index() {
             {section === "in_progress" && <OrdersList apiUrl={ORDERS_API} filterStatus="in_progress" tgApiUrl={TG_API} />}
             {section === "closed" && <OrdersList apiUrl={ORDERS_API} filterStatus="closed" tgApiUrl={TG_API} />}
             {section === "done" && <OrdersList apiUrl={ORDERS_API} filterStatus="done" tgApiUrl={TG_API} />}
-            {section === "bots" && <BotsSection />}
           </div>
         </main>
       </div>
