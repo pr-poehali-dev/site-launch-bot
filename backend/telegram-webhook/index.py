@@ -357,7 +357,7 @@ def handle_accept_order(chat_id: int, order_id: str, driver_name: str, driver_us
 
     if order.get("status") == "paid":
         cur.close(); conn.close()
-        tg_send(chat_id, "✅ Этот заказ уже выкуплен другим водителем.")
+        tg_send(chat_id, "✅ Этот заказ уже выкуплен другим водителем.", reply_markup=MAIN_KEYBOARD)
         return
 
     # Проверяем — уже в очереди? (любой статус)
@@ -383,15 +383,15 @@ def handle_accept_order(chat_id: int, order_id: str, driver_name: str, driver_us
                 return
             else:
                 cur.close(); conn.close()
-                tg_send(chat_id, "❌ Время оплаты истекло. Заказ передан следующему водителю.")
+                tg_send(chat_id, "❌ Время оплаты истекло. Заказ передан следующему водителю.", reply_markup=MAIN_KEYBOARD)
                 return
         elif status == "paid":
             cur.close(); conn.close()
-            tg_send(chat_id, "✅ Вы уже оплатили комиссию по этому заказу.")
+            tg_send(chat_id, "✅ Вы уже оплатили комиссию по этому заказу.", reply_markup=MAIN_KEYBOARD)
             return
         elif status == "waiting":
             cur.close(); conn.close()
-            tg_send(chat_id, "👆 Вы уже в очереди на этот заказ. Ожидайте своей очереди.")
+            tg_send(chat_id, "👆 Вы уже в очереди на этот заказ. Ожидайте своей очереди.", reply_markup=MAIN_KEYBOARD)
             return
         elif status == "expired":
             # Водитель нажал повторно после истечения — переставляем в конец очереди
@@ -416,7 +416,7 @@ def handle_accept_order(chat_id: int, order_id: str, driver_name: str, driver_us
                 notify_next_in_queue(order_id, group_chat_id)
             else:
                 display = f"@{driver_username}" if driver_username else driver_name or "Вы"
-                tg_send(chat_id, f"👆 <b>{display}, вы снова в очереди!</b>\n\nВы на позиции #{new_position}. Ожидайте своей очереди.")
+                tg_send(chat_id, f"👆 <b>{display}, вы снова в очереди!</b>\n\nВы на позиции #{new_position}. Ожидайте своей очереди.", reply_markup=MAIN_KEYBOARD)
                 cur.close(); conn.close()
             return
 
@@ -472,7 +472,8 @@ def handle_accept_order(chat_id: int, order_id: str, driver_name: str, driver_us
 
         tg_send(
             chat_id,
-            f"👆 <b>{display}, вы в очереди!</b>\n\n{queue_msg}"
+            f"👆 <b>{display}, вы в очереди!</b>\n\n{queue_msg}",
+            reply_markup=MAIN_KEYBOARD
         )
         cur.close(); conn.close()
 
@@ -615,8 +616,7 @@ def handle_decline_order(chat_id: int, order_id: str, msg_id: int | None):
     declined_text = "🚫 <b>Вы отказались от заказа</b>\n\nЗаказ передан следующему водителю."
     if msg_id:
         tg_edit(chat_id, msg_id, declined_text, reply_markup={"inline_keyboard": []})
-    else:
-        tg_send(chat_id, declined_text)
+    tg_send(chat_id, declined_text, reply_markup=MAIN_KEYBOARD)
 
     print(f"[DECLINE] driver={chat_id} declined order={order_id}")
 
