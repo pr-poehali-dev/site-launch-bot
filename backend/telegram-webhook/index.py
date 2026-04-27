@@ -98,11 +98,7 @@ def send_subscription_menu(chat_id: int, sub: dict | None = None):
             f"Хотите продлить?"
         )
     else:
-        header = (
-            f"👋 <b>Добро пожаловать в @{BOT_USERNAME}!</b>\n\n"
-            f"С подпиской ваша комиссия снижается с <b>15%</b> до <b>10%</b>.\n\n"
-            f"Выберите тариф подписки:"
-        )
+        header = "Выберите тариф подписки:"
 
     tg_send(
         chat_id,
