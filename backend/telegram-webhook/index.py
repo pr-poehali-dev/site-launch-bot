@@ -141,17 +141,17 @@ def format_queue_text(queue: list) -> str:
     if not queue:
         return ""
     lines = []
-    for i, q in enumerate(queue):
+    for q in queue:
+        status = q.get("status", "waiting")
+        if status == "expired":
+            continue  # Отказавшихся/просрочивших не показываем
         username = q.get("driver_username", "")
         name = q.get("driver_name", "")
         display = f"@{username}" if username else name or "Водитель"
-        status = q.get("status", "waiting")
         if status == "paying":
             mark = "⏳"
         elif status == "paid":
             mark = "✅"
-        elif status == "expired":
-            mark = "❌"
         else:
             mark = "👆"
         lines.append(f"{mark} {display}")
