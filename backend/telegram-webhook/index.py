@@ -444,6 +444,18 @@ def handler(event: dict, context) -> dict:
             )
             result = tg_send(6072837543, test_text)
             return {"statusCode": 200, "headers": CORS_HEADERS, "body": json.dumps({"ok": True, "result": result})}
+        if params.get("testpay") == "1":
+            try:
+                payment = create_yukassa_payment(
+                    amount=1.00,
+                    description="Тестовый платёж — проверка подключения ЮКассы",
+                    metadata={"type": "test"},
+                    return_url=f"https://t.me/{BOT_USERNAME}"
+                )
+                return {"statusCode": 200, "headers": CORS_HEADERS, "body": json.dumps({"ok": True, "payment_id": payment.get("id"), "url": payment.get("confirmation", {}).get("confirmation_url")})}
+            except urllib.error.HTTPError as e:
+                err = e.read().decode()
+                return {"statusCode": 200, "headers": CORS_HEADERS, "body": json.dumps({"ok": False, "error": err})}
         return {"statusCode": 200, "headers": CORS_HEADERS, "body": json.dumps({"ok": True})}
 
     body = json.loads(event.get("body") or "{}")
