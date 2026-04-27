@@ -433,7 +433,11 @@ def handle_accept_order(chat_id: int, order_id: str, driver_name: str, driver_us
                 notify_next_in_queue(order_id, group_chat_id)
             else:
                 display = f"@{driver_username}" if driver_username else driver_name or "Вы"
-                tg_send(chat_id, f"👆 <b>{display}, вы снова в очереди!</b>\n\nВы на позиции #{new_position}. Ожидайте своей очереди.", reply_markup=MAIN_KEYBOARD)
+                sent = tg_send(chat_id, f"👆 <b>{display}, вы снова в очереди!</b>\n\nВы на позиции #{new_position}. Ожидайте своей очереди.", reply_markup=MAIN_KEYBOARD)
+                qmid = sent.get("result", {}).get("message_id") if sent else None
+                if qmid:
+                    cur.execute(f"UPDATE {SCHEMA}.order_queue SET queue_message_id = %s WHERE id = %s", (qmid, existing_queue["id"]))
+                    conn.commit()
                 cur.close(); conn.close()
             return
 
@@ -487,11 +491,18 @@ def handle_accept_order(chat_id: int, order_id: str, driver_name: str, driver_us
                 f"Если первый участник не оплатит комиссию в течение {PAYMENT_TIMEOUT_MINUTES} минут — заказ перейдёт к вам."
             )
 
-        tg_send(
+        sent = tg_send(
             chat_id,
             f"👆 <b>{display}, вы в очереди!</b>\n\n{queue_msg}",
             reply_markup=MAIN_KEYBOARD
         )
+        qmid = sent.get("result", {}).get("message_id") if sent else None
+        if qmid:
+            cur.execute(
+                f"UPDATE {SCHEMA}.order_queue SET queue_message_id = %s WHERE order_id = %s::uuid AND driver_chat_id = %s AND status = 'waiting'",
+                (qmid, order_id, chat_id)
+            )
+            conn.commit()
         cur.close(); conn.close()
 
 
@@ -627,7 +638,16 @@ def handle_decline_order(chat_id: int, order_id: str, msg_id: int | None):
         queue_upd = get_queue_list(cur, order_id)
         update_group_message(dict(order_row), queue_upd, group_chat_id)
 
+    # Удаляем сообщения о позиции в очереди у всех ожидающих водителей
+    cur.execute(
+        f"SELECT driver_chat_id, queue_message_id FROM {SCHEMA}.order_queue WHERE order_id = %s::uuid AND queue_message_id IS NOT NULL",
+        (order_id,)
+    )
+    queue_msgs = [dict(r) for r in cur.fetchall()]
     cur.close(); conn.close()
+
+    for qm in queue_msgs:
+        tg("deleteMessage", {"chat_id": qm["driver_chat_id"], "message_id": qm["queue_message_id"]})
 
     # Редактируем сообщение водителю — убираем кнопки
     declined_text = "🚫 <b>Вы отказались от заказа</b>\n\nЗаказ передан следующему водителю."
