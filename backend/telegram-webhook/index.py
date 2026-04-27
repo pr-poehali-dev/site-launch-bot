@@ -871,11 +871,19 @@ def handler(event: dict, context) -> dict:
 
     # /start или /start без параметров — главное меню
     elif text.startswith("/start") or text == "/menu":
+        user_id = from_info.get("id") or chat_id
+        chat_type = message.get("chat", {}).get("type", "private")
         conn = get_conn()
         cur = conn.cursor(cursor_factory=RealDictCursor)
-        sub = get_active_subscription(cur, chat_id)
+        sub = get_active_subscription(cur, user_id)
         cur.close(); conn.close()
-        send_subscription_menu(chat_id, sub)
+        if chat_type in ("group", "supergroup"):
+            # В группе — отправляем меню в личку, в группе пишем подсказку
+            send_subscription_menu(user_id, sub)
+            display = f"@{driver_username}" if driver_username else driver_name or "Водитель"
+            tg_send(chat_id, f"👋 {display}, меню подписок отправлено вам в личные сообщения!")
+        else:
+            send_subscription_menu(chat_id, sub)
 
     # /mystatus — статус подписки
     elif text == "/mystatus":
