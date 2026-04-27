@@ -1,5 +1,5 @@
 """
-Telegram webhook для @zacazubot.
+Telegram webhook для @zacazubot. v2
 /start — меню подписок (1м/6м/12м).
 /start accept_<order_id> — принять заказ, создать платёж комиссии.
 /start sub_<plan> — купить подписку через ЮКассу.
