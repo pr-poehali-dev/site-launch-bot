@@ -878,10 +878,7 @@ def handler(event: dict, context) -> dict:
         sub = get_active_subscription(cur, user_id)
         cur.close(); conn.close()
         if chat_type in ("group", "supergroup"):
-            # В группе — отправляем меню в личку, в группе пишем подсказку
             send_subscription_menu(user_id, sub)
-            display = f"@{driver_username}" if driver_username else driver_name or "Водитель"
-            tg_send(chat_id, f"👋 {display}, меню подписок отправлено вам в личные сообщения!")
         else:
             send_subscription_menu(chat_id, sub)
 
@@ -898,7 +895,7 @@ def handler(event: dict, context) -> dict:
         else:
             send_subscription_menu(chat_id)
 
-    else:
+    elif message.get("chat", {}).get("type", "private") == "private":
         tg_send(chat_id, "Используй /start чтобы открыть меню подписок.")
 
     return {"statusCode": 200, "headers": CORS_HEADERS, "body": json.dumps({"ok": True})}
