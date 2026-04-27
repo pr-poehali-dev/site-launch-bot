@@ -688,6 +688,19 @@ def handle_commission_paid(payment: dict, conn, cur):
     queue = get_queue_list(cur, order_id)
     update_group_message(order | {"status": "paid"}, queue, group_chat_id)
 
+    # Уведомляем всех в очереди (кроме того, кто оплатил)
+    winner_chat_id = int(driver_chat_id_meta) if driver_chat_id_meta else chat_id
+    for q in queue:
+        q_chat_id = q.get("driver_chat_id")
+        if q_chat_id and int(q_chat_id) != int(winner_chat_id) and q.get("status") in ("waiting", "expired"):
+            winner_display = order.get("driver_username", "") or order.get("driver_name", "") or "другой водитель"
+            if order.get("driver_username"):
+                winner_display = f"@{order['driver_username']}"
+            tg_send(
+                q_chat_id,
+                f"ℹ️ Заказ <b>{pickup} → {dropoff}</b> ({dt_str}) был выкуплен другим водителем.\n\nЖдите следующих заказов! 🚗"
+            )
+
 
 def handler(event: dict, context) -> dict:
     if event.get("httpMethod") == "OPTIONS":
