@@ -672,6 +672,7 @@ def handle_subscribe(chat_id: int, plan_key: str, driver_name: str, driver_usern
     conn = get_conn()
     cur = conn.cursor(cursor_factory=RealDictCursor)
 
+    # Проверяем существующий pending-счёт на этот же тариф
     cur.execute(
         f"SELECT * FROM {SCHEMA}.subscriptions WHERE driver_chat_id = %s AND plan = %s AND status = 'pending' AND created_at > NOW() - INTERVAL '1 hour' LIMIT 1",
         (chat_id, plan_key)
@@ -686,6 +687,24 @@ def handle_subscribe(chat_id: int, plan_key: str, driver_name: str, driver_usern
         cur.close(); conn.close()
         return
 
+    # Отменяем старые pending-счета других тарифов и убираем кнопки из сообщений
+    cur.execute(
+        f"SELECT id, message_id FROM {SCHEMA}.subscriptions WHERE driver_chat_id = %s AND status = 'pending' AND created_at > NOW() - INTERVAL '24 hours'",
+        (chat_id,)
+    )
+    old_pending = cur.fetchall()
+    for old in old_pending:
+        if old.get("message_id"):
+            try:
+                tg("editMessageReplyMarkup", {"chat_id": chat_id, "message_id": old["message_id"], "reply_markup": {"inline_keyboard": []}})
+            except Exception:
+                pass
+    cur.execute(
+        f"UPDATE {SCHEMA}.subscriptions SET status = 'cancelled' WHERE driver_chat_id = %s AND status = 'pending'",
+        (chat_id,)
+    )
+    conn.commit()
+
     try:
         payment = create_yukassa_payment(
             amount=plan["amount"],
@@ -696,17 +715,18 @@ def handle_subscribe(chat_id: int, plan_key: str, driver_name: str, driver_usern
         payment_id = payment.get("id", "")
         payment_url = payment.get("confirmation", {}).get("confirmation_url", "")
 
-        cur.execute(
-            f"INSERT INTO {SCHEMA}.subscriptions (driver_chat_id, driver_name, driver_username, plan, amount, status, payment_id, payment_url) VALUES (%s, %s, %s, %s, %s, 'pending', %s, %s)",
-            (chat_id, driver_name, driver_username, plan_key, plan["amount"], payment_id, payment_url)
-        )
-        conn.commit()
-
-        tg_send(
+        sent = tg_send(
             chat_id,
             f"✅ Счёт создан!\n\nТариф: <b>{plan['label']}</b>\nСумма: <b>{int(plan['amount'])} ₽</b>\n\nПосле оплаты комиссия снизится до <b>10%</b>.",
             reply_markup={"inline_keyboard": [[{"text": "💳 Оплатить подписку", "url": payment_url}]]}
         )
+        msg_id = sent.get("result", {}).get("message_id") if sent else None
+
+        cur.execute(
+            f"INSERT INTO {SCHEMA}.subscriptions (driver_chat_id, driver_name, driver_username, plan, amount, status, payment_id, payment_url, message_id) VALUES (%s, %s, %s, %s, %s, 'pending', %s, %s, %s)",
+            (chat_id, driver_name, driver_username, plan_key, plan["amount"], payment_id, payment_url, msg_id)
+        )
+        conn.commit()
         print(f"[SUB] Created subscription payment plan={plan_key} chat_id={chat_id} payment_id={payment_id}")
 
     except urllib.error.HTTPError as e:

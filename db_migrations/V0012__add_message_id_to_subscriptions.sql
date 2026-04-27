@@ -1,0 +1,1 @@
+ALTER TABLE t_p16564901_site_launch_bot.subscriptions ADD COLUMN IF NOT EXISTS message_id bigint NULL;
