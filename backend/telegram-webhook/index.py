@@ -108,11 +108,13 @@ def send_subscription_menu(chat_id: int, sub: dict | None = None):
         chat_id,
         header,
         reply_markup={
-            "inline_keyboard": [
-                [{"text": "📅 1 месяц — 1 500 ₽",    "callback_data": "sub_1m"}],
-                [{"text": "📆 6 месяцев — 6 000 ₽",   "callback_data": "sub_6m"}],
-                [{"text": "🗓 12 месяцев — 10 000 ₽",  "callback_data": "sub_12m"}],
-            ]
+            "keyboard": [
+                [{"text": "📅 1 месяц — 1 500 ₽"}],
+                [{"text": "📆 6 месяцев — 6 000 ₽"}],
+                [{"text": "🗓 12 месяцев — 10 000 ₽"}],
+            ],
+            "resize_keyboard": True,
+            "one_time_keyboard": True,
         }
     )
 
@@ -334,8 +336,17 @@ def handler(event: dict, context) -> dict:
 
     print(f"[WEBHOOK] chat_id={chat_id} text={text!r} name={driver_name}")
 
+    # Кнопки подписки из ReplyKeyboard
+    PLAN_BUTTONS = {
+        "📅 1 месяц — 1 500 ₽":    "1m",
+        "📆 6 месяцев — 6 000 ₽":  "6m",
+        "🗓 12 месяцев — 10 000 ₽": "12m",
+    }
+    if text in PLAN_BUTTONS:
+        handle_subscribe(chat_id, PLAN_BUTTONS[text], driver_name, driver_username)
+
     # /start accept_<order_id>
-    if text.startswith("/start accept_"):
+    elif text.startswith("/start accept_"):
         order_id = text.replace("/start accept_", "").strip()
         handle_accept_order(chat_id, order_id, driver_name, driver_username)
 
