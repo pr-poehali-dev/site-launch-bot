@@ -12,7 +12,7 @@ import urllib.error
 import base64
 import psycopg2
 from psycopg2.extras import RealDictCursor
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 WEBHOOK_URL = "https://functions.poehali.dev/06f62334-3744-4817-84a2-fee6b379c230"
 BOT_USERNAME = "zacazubot"
@@ -277,6 +277,100 @@ def handle_accept_order(chat_id: int, order_id: str, driver_name: str, driver_us
         conn.close()
 
 
+def handle_subscription_paid(payment: dict, conn, cur):
+    metadata = payment.get("metadata", {})
+    plan = metadata.get("plan", "")
+    chat_id = int(metadata.get("driver_chat_id", 0))
+    payment_id = payment.get("id", "")
+
+    if not chat_id or not plan:
+        print(f"[SUB] Missing metadata chat_id={chat_id} plan={plan}")
+        return
+
+    months = PLANS.get(plan, {}).get("months", 1)
+    label  = PLANS.get(plan, {}).get("label", plan)
+    now = datetime.now(timezone.utc)
+    expires_at = now + timedelta(days=30 * months)
+    expires_str = expires_at.strftime("%d.%m.%Y")
+
+    cur.execute(
+        "UPDATE t_p16564901_site_launch_bot.subscriptions SET status = 'expired' WHERE driver_chat_id = %s AND status = 'active'",
+        (chat_id,)
+    )
+    cur.execute(
+        "UPDATE t_p16564901_site_launch_bot.subscriptions SET status = 'active', started_at = %s, expires_at = %s WHERE payment_id = %s AND status = 'pending'",
+        (now, expires_at, payment_id)
+    )
+    cur.execute(
+        "SELECT id FROM t_p16564901_site_launch_bot.subscriptions WHERE payment_id = %s",
+        (payment_id,)
+    )
+    if not cur.fetchone():
+        cur.execute(
+            "INSERT INTO t_p16564901_site_launch_bot.subscriptions (driver_chat_id, plan, amount, status, payment_id, started_at, expires_at) VALUES (%s, %s, %s, 'active', %s, %s, %s)",
+            (chat_id, plan, float(payment.get("amount", {}).get("value", 0)), payment_id, now, expires_at)
+        )
+    conn.commit()
+    print(f"[SUB] Activated plan={plan} chat_id={chat_id} expires={expires_str}")
+
+    tg_send(
+        chat_id,
+        f"🎉 <b>Подписка активирована!</b>\n"
+        f"{'━' * 26}\n"
+        f"📦 Тариф: <b>{label}</b>\n"
+        f"📅 Действует до: <b>{expires_str}</b>\n"
+        f"💸 Комиссия теперь: <b>10%</b> вместо 15%\n\n"
+        f"Теперь с каждого заказа вы зарабатываете больше — "
+        f"разница сразу остаётся у вас.\n\n"
+        f"Удачи на дорогах! 🚗💨",
+        reply_markup={"remove_keyboard": True}
+    )
+
+
+def handle_commission_paid(payment: dict, conn, cur):
+    metadata = payment.get("metadata", {})
+    order_id = metadata.get("order_id", "")
+    if not order_id:
+        return
+
+    cur.execute(
+        "UPDATE t_p16564901_site_launch_bot.orders SET status = 'paid' WHERE id = %s::uuid",
+        (order_id,)
+    )
+    conn.commit()
+
+    cur.execute(
+        "SELECT * FROM t_p16564901_site_launch_bot.orders WHERE id = %s::uuid",
+        (order_id,)
+    )
+    order = cur.fetchone()
+    if not order:
+        return
+    order = dict(order)
+    chat_id = order.get("driver_chat_id")
+    if not chat_id:
+        return
+
+    pickup   = order.get("pickup", "—")
+    dropoff  = order.get("dropoff", "—")
+    price    = float(order.get("price") or 0)
+    trip_date = str(order.get("trip_date", ""))
+    trip_time = order.get("trip_time", "")
+    dt_str = trip_date + (f" в {trip_time}" if trip_time else "")
+
+    print(f"[COMMISSION] Paid order_id={order_id} chat_id={chat_id}")
+
+    tg_send(
+        chat_id,
+        f"✅ <b>Комиссия оплачена — заказ подтверждён!</b>\n"
+        f"{'━' * 26}\n"
+        f"📍 {pickup} → {dropoff}\n"
+        f"📅 {dt_str}\n"
+        f"💰 Стоимость поездки: <b>{int(price)} ₽</b>\n\n"
+        f"Заказ закреплён за вами. Счастливого пути! 🚀"
+    )
+
+
 def handler(event: dict, context) -> dict:
     if event.get("httpMethod") == "OPTIONS":
         return {"statusCode": 200, "headers": CORS_HEADERS, "body": ""}
@@ -296,6 +390,27 @@ def handler(event: dict, context) -> dict:
         return {"statusCode": 200, "headers": CORS_HEADERS, "body": json.dumps({"ok": True})}
 
     body = json.loads(event.get("body") or "{}")
+
+    # Уведомление от ЮКассы (содержит поле "event")
+    if "event" in body:
+        print(f"[YUKASSA] notification: {json.dumps(body)[:800]}")
+        event_type     = body.get("event", "")
+        payment        = body.get("object", {})
+        payment_status = payment.get("status", "")
+        pay_type       = payment.get("metadata", {}).get("type", "")
+
+        if event_type == "payment.succeeded" and payment_status == "succeeded":
+            conn = get_conn()
+            cur  = conn.cursor(cursor_factory=RealDictCursor)
+            if pay_type == "subscription":
+                handle_subscription_paid(payment, conn, cur)
+            elif pay_type == "commission":
+                handle_commission_paid(payment, conn, cur)
+            cur.close()
+            conn.close()
+
+        return {"statusCode": 200, "headers": CORS_HEADERS, "body": json.dumps({"ok": True})}
+
     print(f"[WEBHOOK] update: {json.dumps(body)[:600]}")
 
     # Обработка нажатия inline-кнопок (callback_query)
