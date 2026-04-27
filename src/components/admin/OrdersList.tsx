@@ -22,6 +22,10 @@ interface Order {
   comment: string;
   status: string;
   created_at: string;
+  driver_chat_id?: number | null;
+  driver_name?: string | null;
+  driver_username?: string | null;
+  payment_url?: string | null;
 }
 
 const statusConfig: Record<string, { label: string; color: string; bg: string }> = {
@@ -280,6 +284,40 @@ export default function OrdersList({ apiUrl, tgApiUrl, filterStatus }: Props) {
 
           {selected.comment && (
             <div className="mb-4 p-3 bg-muted/30 rounded-lg text-xs text-muted-foreground">{selected.comment}</div>
+          )}
+
+          {selected.driver_chat_id ? (
+            <div className="mb-4 p-3 bg-green-500/5 border border-green-500/20 rounded-lg">
+              <div className="text-[10px] mono uppercase tracking-wider text-green-400 mb-2">Водитель принял заказ</div>
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-green-500/10 flex items-center justify-center flex-shrink-0">
+                  <Icon name="User" size={15} className="text-green-400" />
+                </div>
+                <div>
+                  <div className="text-sm font-medium text-foreground">{selected.driver_name || "—"}</div>
+                  {selected.driver_username && (
+                    <div className="text-xs text-muted-foreground">@{selected.driver_username}</div>
+                  )}
+                  <div className="text-[10px] text-muted-foreground mono mt-0.5">ID: {selected.driver_chat_id}</div>
+                </div>
+                {selected.payment_url && (
+                  <a
+                    href={selected.payment_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-500/10 border border-green-500/20 text-green-400 text-xs font-medium hover:bg-green-500/20 transition-all"
+                  >
+                    <Icon name="CreditCard" size={13} />
+                    Ссылка на оплату
+                  </a>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="mb-4 p-3 bg-muted/20 border border-border rounded-lg">
+              <div className="text-[10px] mono uppercase tracking-wider text-muted-foreground mb-1">Водитель</div>
+              <div className="text-xs text-muted-foreground">Ещё не принял заказ</div>
+            </div>
           )}
 
           <div className="mb-4 pb-4 border-b border-border">
