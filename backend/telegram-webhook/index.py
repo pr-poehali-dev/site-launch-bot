@@ -310,11 +310,18 @@ def notify_next_in_queue(order_id: str, group_chat_id: str):
             f"⏳ <b>У вас {PAYMENT_TIMEOUT_MINUTES} минут для оплаты!</b>"
         )
 
-        tg_send(
+        sent = tg_send(
             driver_chat_id,
             order_info,
             reply_markup={"inline_keyboard": [[{"text": "💳 Оплатить комиссию", "url": payment_url}]]}
         )
+        driver_msg_id = sent.get("result", {}).get("message_id") if sent else None
+        if driver_msg_id:
+            cur.execute(
+                f"UPDATE {SCHEMA}.order_queue SET driver_message_id = %s WHERE id = %s",
+                (driver_msg_id, next_driver["id"])
+            )
+            conn.commit()
 
         # Обновляем сообщение в группе
         queue = get_queue_list(cur, order_id)
@@ -518,7 +525,16 @@ def check_expired_payments(group_chat_id: str):
         conn2.commit()
         cur2.close(); conn2.close()
 
-        tg_send(driver_chat_id, f"⏰ Время оплаты истекло. Заказ передан следующему водителю.")
+        driver_msg_id = item.get("driver_message_id")
+        expired_text = (
+            f"⏰ <b>Время оплаты истекло</b>\n\n"
+            f"Заказ передан следующему водителю."
+        )
+        if driver_msg_id:
+            tg_edit(driver_chat_id, driver_msg_id, expired_text, reply_markup=None)
+        else:
+            tg_send(driver_chat_id, expired_text)
+
         notify_next_in_queue(order_id, group_chat_id)
 
 

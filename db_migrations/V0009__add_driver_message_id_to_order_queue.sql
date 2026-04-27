@@ -1,0 +1,1 @@
+ALTER TABLE t_p16564901_site_launch_bot.order_queue ADD COLUMN IF NOT EXISTS driver_message_id bigint NULL;
