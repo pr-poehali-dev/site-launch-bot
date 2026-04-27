@@ -912,6 +912,15 @@ def handler(event: dict, context) -> dict:
             with urllib.request.urlopen(req, timeout=10) as resp:
                 result = json.loads(resp.read())
             print(f"[WEBHOOK] setWebhook: {result}")
+
+            # Устанавливаем команды бота
+            tg("setMyCommands", {"commands": [
+                {"command": "start", "description": "Главное меню"},
+                {"command": "mystatus", "description": "Мой статус"},
+            ]})
+            # Кнопка Меню всегда видна в интерфейсе
+            tg("setChatMenuButton", {"menu_button": {"type": "commands"}})
+
             return {"statusCode": 200, "headers": CORS_HEADERS, "body": json.dumps(result)}
 
         if params.get("checkexpired") == "1":
