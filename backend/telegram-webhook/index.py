@@ -449,6 +449,45 @@ def check_expired_payments(group_chat_id: str):
     cur = conn.cursor(cursor_factory=RealDictCursor)
 
     now = datetime.now(timezone.utc)
+    warn_at = now + timedelta(minutes=1)
+
+    # Уведомляем следующего в очереди за 1 минуту до истечения
+    cur.execute(
+        f"""
+        SELECT oq.order_id, o.pickup, o.dropoff
+        FROM {SCHEMA}.order_queue oq
+        JOIN {SCHEMA}.orders o ON o.id = oq.order_id
+        WHERE oq.status = 'paying'
+          AND oq.payment_expires_at > %s
+          AND oq.payment_expires_at <= %s
+          AND o.status != 'paid'
+        """,
+        (now, warn_at)
+    )
+    paying_soon = [dict(r) for r in cur.fetchall()]
+
+    for item in paying_soon:
+        order_id = str(item["order_id"])
+        # Находим следующего waiting в этом заказе
+        cur.execute(
+            f"""
+            SELECT driver_chat_id, driver_username, driver_name
+            FROM {SCHEMA}.order_queue
+            WHERE order_id = %s::uuid AND status = 'waiting'
+            ORDER BY position ASC LIMIT 1
+            """,
+            (order_id,)
+        )
+        next_row = cur.fetchone()
+        if next_row:
+            pickup = item.get("pickup", "")
+            dropoff = item.get("dropoff", "")
+            tg_send(
+                next_row["driver_chat_id"],
+                f"⚡️ <b>Вы следующий!</b>\n\nЧерез ~1 минуту вам придёт ссылка на оплату заказа <b>{pickup} → {dropoff}</b>.\n\nБудьте готовы!"
+            )
+            print(f"[QUEUE] Warned next driver={next_row['driver_chat_id']} for order={order_id}")
+
     cur.execute(
         f"""
         SELECT oq.*, o.status as order_status
