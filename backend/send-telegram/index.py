@@ -1,10 +1,14 @@
 """
 Отправляет заявку на поездку в Telegram-группу с inline-кнопкой «Принять заказ».
+Сохраняет message_id в БД для последующего обновления списка водителей.
 """
 import json
 import os
 import urllib.request
 import urllib.error
+import psycopg2
+
+SCHEMA = "t_p16564901_site_launch_bot"
 
 BOT_USERNAME = "zacazubot"
 
@@ -131,6 +135,23 @@ def handler(event: dict, context) -> dict:
         result = tg_request("sendMessage", payload)
         msg_id = result.get("result", {}).get("message_id")
         print(f"[TG] Sent message_id={msg_id} with accept button order_id={order_id}")
+
+        # Сохраняем message_id в БД для обновления сообщения при кликах водителей
+        if msg_id and order_id:
+            try:
+                conn = psycopg2.connect(os.environ["DATABASE_URL"])
+                cur = conn.cursor()
+                cur.execute(
+                    f"UPDATE {SCHEMA}.orders SET tg_group_message_id = %s WHERE id = %s::uuid",
+                    (msg_id, order_id)
+                )
+                conn.commit()
+                cur.close()
+                conn.close()
+                print(f"[TG] Saved tg_group_message_id={msg_id} for order_id={order_id}")
+            except Exception as db_err:
+                print(f"[TG] DB save error: {db_err}")
+
         return {
             "statusCode": 200,
             "headers": CORS_HEADERS,
