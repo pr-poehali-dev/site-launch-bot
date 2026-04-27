@@ -1053,7 +1053,6 @@ def handler(event: dict, context) -> dict:
             tg_send(chat_id, f"✅ <b>Подписка активна</b>\nДо: <b>{expires_str}</b>\nКомиссия: <b>10%</b>", reply_markup=MAIN_KEYBOARD)
         else:
             tg_send(chat_id, "❌ <b>Подписка не активна</b>\nВаша комиссия: <b>15%</b>", reply_markup=MAIN_KEYBOARD)
-            send_subscription_menu(chat_id)
 
     # Кнопка «Подписка»
     elif text == "💳 Подписка":
