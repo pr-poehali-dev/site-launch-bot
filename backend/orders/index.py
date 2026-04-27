@@ -252,7 +252,7 @@ def handler(event: dict, context) -> dict:
             conn.close()
             return {"statusCode": 400, "headers": CORS_HEADERS, "body": json.dumps({"error": "id required"})}
 
-        # Получаем заказ до удаления, чтобы отредактировать сообщение в группе
+        # Получаем заказ, редактируем сообщение в группе, ставим статус cancelled
         cur.execute(
             f"SELECT * FROM {SCHEMA}.orders WHERE id = %s::uuid",
             (order_id,)
@@ -263,8 +263,8 @@ def handler(event: dict, context) -> dict:
             msg_id = order.get("tg_group_message_id") or order.get("tg_message_id")
             group_chat_id = os.environ.get("TELEGRAM_GROUP_ID", "")
             if msg_id and group_chat_id:
-                pickup   = order.get("pickup", "—")
-                dropoff  = order.get("dropoff", "—")
+                pickup    = order.get("pickup", "—")
+                dropoff   = order.get("dropoff", "—")
                 from_city = order.get("from_city", "")
                 to_city   = order.get("to_city", "")
                 trip_date = str(order.get("trip_date", ""))
@@ -282,7 +282,10 @@ def handler(event: dict, context) -> dict:
                 )
                 tg_edit(group_chat_id, msg_id, cancelled_text, reply_markup=None)
 
-        cur.execute("DELETE FROM t_p16564901_site_launch_bot.orders WHERE id = %s::uuid", (order_id,))
+        cur.execute(
+            f"UPDATE {SCHEMA}.orders SET status = 'cancelled' WHERE id = %s::uuid",
+            (order_id,)
+        )
         conn.commit()
         cur.close()
         conn.close()

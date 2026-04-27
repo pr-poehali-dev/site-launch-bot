@@ -6,22 +6,24 @@ import OrdersList from "@/components/admin/OrdersList";
 const ORDERS_API = "https://functions.poehali.dev/55980dcf-a1ce-4d33-acc5-93fea15cb52c";
 const TG_API = "https://functions.poehali.dev/ed779d34-4d03-4202-baa8-7d25732d1aaa";
 
-export type Section = "orders_new" | "all" | "on_sale" | "in_progress" | "closed" | "done";
+export type Section = "orders_new" | "all" | "on_sale" | "in_progress" | "closed" | "done" | "cancelled";
 
 const navItems: { id: Section; label: string; icon: string; status?: string; divider?: boolean }[] = [
   { id: "orders_new", label: "Новая заявка", icon: "Plus" },
   { id: "all", label: "Все заказы", icon: "ClipboardList", divider: true },
   { id: "on_sale", label: "На продаже", icon: "Tag", status: "on_sale" },
   { id: "in_progress", label: "Выполняется", icon: "Car", status: "in_progress" },
-  { id: "closed", label: "Закрыт", icon: "XCircle", status: "closed" },
+  { id: "closed", label: "Закрыт", icon: "Clock", status: "closed" },
   { id: "done", label: "Завершен", icon: "CheckCircle", status: "done" },
+  { id: "cancelled", label: "Удалённые", icon: "Trash2", status: "cancelled" },
 ];
 
 const sectionColors: Partial<Record<Section, string>> = {
   on_sale: "text-yellow-400",
   in_progress: "text-green-400",
-  closed: "text-red-400",
+  closed: "text-orange-400",
   done: "text-muted-foreground",
+  cancelled: "text-red-400",
 };
 
 export default function Index() {
@@ -204,6 +206,7 @@ export default function Index() {
             {section === "in_progress" && <OrdersList apiUrl={ORDERS_API} filterStatus="in_progress" tgApiUrl={TG_API} />}
             {section === "closed" && <OrdersList apiUrl={ORDERS_API} filterStatus="closed" tgApiUrl={TG_API} />}
             {section === "done" && <OrdersList apiUrl={ORDERS_API} filterStatus="done" tgApiUrl={TG_API} />}
+            {section === "cancelled" && <OrdersList apiUrl={ORDERS_API} filterStatus="cancelled" tgApiUrl={TG_API} />}
           </div>
         </main>
       </div>

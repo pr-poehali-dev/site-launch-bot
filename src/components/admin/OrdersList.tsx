@@ -125,7 +125,7 @@ export default function OrdersList({ apiUrl, tgApiUrl, filterStatus }: Props) {
   };
 
   const deleteOrder = async (id: string) => {
-    setOrders((prev) => prev.filter((o) => o.id !== id));
+    setOrders((prev) => prev.map((o) => o.id === id ? { ...o, status: "cancelled" } : o));
     setSelected(null);
     await fetch(apiUrl, {
       method: "DELETE",
