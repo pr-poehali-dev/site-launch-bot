@@ -251,6 +251,37 @@ def handler(event: dict, context) -> dict:
             cur.close()
             conn.close()
             return {"statusCode": 400, "headers": CORS_HEADERS, "body": json.dumps({"error": "id required"})}
+
+        # Получаем заказ до удаления, чтобы отредактировать сообщение в группе
+        cur.execute(
+            f"SELECT * FROM {SCHEMA}.orders WHERE id = %s::uuid",
+            (order_id,)
+        )
+        row = cur.fetchone()
+        if row:
+            order = dict(row)
+            msg_id = order.get("tg_group_message_id") or order.get("tg_message_id")
+            group_chat_id = os.environ.get("TELEGRAM_GROUP_ID", "")
+            if msg_id and group_chat_id:
+                pickup   = order.get("pickup", "—")
+                dropoff  = order.get("dropoff", "—")
+                from_city = order.get("from_city", "")
+                to_city   = order.get("to_city", "")
+                trip_date = str(order.get("trip_date", ""))
+                trip_time = order.get("trip_time", "")
+                dt_str    = trip_date + (f" в {trip_time}" if trip_time else "")
+                price     = float(order.get("price") or 0)
+                route_line = f"  🟢 {from_city or pickup}\n  🔴 {to_city or dropoff}"
+                cancelled_text = (
+                    f"🚫 <b>ЗАКАЗ ОТМЕНЁН ДИСПЕТЧЕРОМ</b>\n"
+                    f"{'─'*28}\n"
+                    f"📍 <b>Маршрут:</b>\n{route_line}\n"
+                    f"{'─'*28}\n"
+                    f"📅 <b>Дата:</b> {dt_str}\n"
+                    f"💰 <b>Стоимость:</b> {int(price)} ₽"
+                )
+                tg_edit(group_chat_id, msg_id, cancelled_text, reply_markup=None)
+
         cur.execute("DELETE FROM t_p16564901_site_launch_bot.orders WHERE id = %s::uuid", (order_id,))
         conn.commit()
         cur.close()
