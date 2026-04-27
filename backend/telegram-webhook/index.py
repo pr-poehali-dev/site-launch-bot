@@ -109,9 +109,9 @@ def send_subscription_menu(chat_id: int, sub: dict | None = None):
         header,
         reply_markup={
             "inline_keyboard": [
-                [{"text": "📅 1 месяц — 1 500 ₽",   "url": f"https://t.me/{BOT_USERNAME}?start=sub_1m"}],
-                [{"text": "📆 6 месяцев — 6 000 ₽",  "url": f"https://t.me/{BOT_USERNAME}?start=sub_6m"}],
-                [{"text": "🗓 12 месяцев — 10 000 ₽", "url": f"https://t.me/{BOT_USERNAME}?start=sub_12m"}],
+                [{"text": "📅 1 месяц — 1 500 ₽",    "callback_data": "sub_1m"}],
+                [{"text": "📆 6 месяцев — 6 000 ₽",   "callback_data": "sub_6m"}],
+                [{"text": "🗓 12 месяцев — 10 000 ₽",  "callback_data": "sub_12m"}],
             ]
         }
     )
@@ -295,6 +295,30 @@ def handler(event: dict, context) -> dict:
 
     body = json.loads(event.get("body") or "{}")
     print(f"[WEBHOOK] update: {json.dumps(body)[:600]}")
+
+    # Обработка нажатия inline-кнопок (callback_query)
+    callback = body.get("callback_query")
+    if callback:
+        cb_data = callback.get("data", "")
+        cb_id = callback.get("id", "")
+        from_info = callback.get("from", {})
+        chat_id = callback.get("message", {}).get("chat", {}).get("id") or from_info.get("id")
+        driver_username = from_info.get("username", "")
+        first_name = from_info.get("first_name", "")
+        last_name = from_info.get("last_name", "")
+        driver_name = (first_name + " " + last_name).strip()
+
+        # Отвечаем на callback чтобы убрать «часики» с кнопки
+        try:
+            tg("answerCallbackQuery", {"callback_query_id": cb_id})
+        except Exception:
+            pass
+
+        if cb_data.startswith("sub_"):
+            plan_key = cb_data.replace("sub_", "", 1)
+            handle_subscribe(chat_id, plan_key, driver_name, driver_username)
+
+        return {"statusCode": 200, "headers": CORS_HEADERS, "body": json.dumps({"ok": True})}
 
     message = body.get("message") or body.get("edited_message")
     if not message:
