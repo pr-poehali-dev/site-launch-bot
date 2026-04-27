@@ -309,6 +309,7 @@ def notify_next_in_queue(order_id: str, group_chat_id: str):
             f"⏳ <b>У вас {PAYMENT_TIMEOUT_MINUTES} минут для оплаты!</b>"
         )
 
+        tg_send(driver_chat_id, "⬇️ Новый заказ для вас:", reply_markup=MAIN_KEYBOARD)
         sent = tg_send(
             driver_chat_id,
             order_info,
