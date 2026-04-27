@@ -103,7 +103,7 @@ def get_active_subscription(cur, chat_id: int) -> dict | None:
 MAIN_KEYBOARD = {
     "keyboard": [
         [{"text": "💳 Подписка"}, {"text": "📊 Мой статус"}],
-        [{"text": "1 месяц — 1 500 ₽"}, {"text": "6 мес — 6 000 ₽"}, {"text": "12 мес — 10 000 ₽"}],
+        [{"text": "1 месяц 1 500 ₽"}, {"text": "6 мес 6 000 ₽"}, {"text": "12 мес 10 000 ₽"}],
     ],
     "resize_keyboard": True,
     "persistent": True,
@@ -1064,11 +1064,11 @@ def handler(event: dict, context) -> dict:
         send_subscription_menu(chat_id, sub)
 
     # Кнопки тарифов из reply_keyboard
-    elif text in ("1 месяц — 1 500 ₽", "6 мес — 6 000 ₽", "12 мес — 10 000 ₽"):
+    elif text in ("1 месяц 1 500 ₽", "6 мес 6 000 ₽", "12 мес 10 000 ₽"):
         plan_map = {
-            "1 месяц — 1 500 ₽": "1m",
-            "6 мес — 6 000 ₽":   "6m",
-            "12 мес — 10 000 ₽":  "12m",
+            "1 месяц 1 500 ₽": "1m",
+            "6 мес 6 000 ₽":   "6m",
+            "12 мес 10 000 ₽":  "12m",
         }
         plan_key = plan_map[text]
         handle_subscribe(chat_id, plan_key, driver_name, driver_username)
