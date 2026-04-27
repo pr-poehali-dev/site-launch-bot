@@ -98,7 +98,7 @@ def send_subscription_menu(chat_id: int, sub: dict | None = None):
             f"Хотите продлить?"
         )
     else:
-        header = "Выберите тариф подписки:"
+        header = "📋 Тарифы подписки:"
 
     tg_send(
         chat_id,
