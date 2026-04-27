@@ -328,6 +328,14 @@ def run_check():
             (order_id, driver_chat_id)
         )
         conn2.commit()
+
+        # Обновляем сообщение в группе — убираем ник водителя (статус expired)
+        cur2.execute(f"SELECT * FROM {SCHEMA}.orders WHERE id = %s::uuid", (order_id,))
+        order_row = cur2.fetchone()
+        if order_row:
+            queue_upd = get_queue_list(cur2, order_id)
+            update_group_message(dict(order_row), queue_upd, group_chat_id)
+
         cur2.close(); conn2.close()
 
         driver_msg_id = item.get("driver_message_id")
