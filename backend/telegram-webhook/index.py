@@ -124,6 +124,11 @@ def handler(event: dict, context) -> dict:
 
     chat_id = message.get("chat", {}).get("id")
     text = message.get("text", "")
+    from_info = message.get("from", {})
+    driver_username = from_info.get("username", "")
+    first_name = from_info.get("first_name", "")
+    last_name = from_info.get("last_name", "")
+    driver_name = (first_name + " " + last_name).strip()
 
     # Обрабатываем /start accept_<order_id>
     if not text.startswith("/start accept_"):
@@ -131,7 +136,7 @@ def handler(event: dict, context) -> dict:
         return {"statusCode": 200, "headers": CORS_HEADERS, "body": json.dumps({"ok": True})}
 
     order_id = text.replace("/start accept_", "").strip()
-    print(f"[WEBHOOK] Driver accepting order_id={order_id} chat_id={chat_id}")
+    print(f"[WEBHOOK] Driver accepting order_id={order_id} chat_id={chat_id} name={driver_name} username={driver_username}")
 
     conn = get_conn()
     cur = conn.cursor(cursor_factory=RealDictCursor)
@@ -149,6 +154,15 @@ def handler(event: dict, context) -> dict:
         return {"statusCode": 200, "headers": CORS_HEADERS, "body": json.dumps({"ok": True})}
 
     order = dict(order)
+
+    # Записываем данные водителя сразу при первом клике (если ещё не записаны)
+    if not order.get("driver_chat_id"):
+        cur.execute(
+            "UPDATE t_p16564901_site_launch_bot.orders SET driver_chat_id = %s, driver_username = %s, driver_name = %s WHERE id = %s::uuid",
+            (chat_id, driver_username, driver_name, order_id)
+        )
+        conn.commit()
+        print(f"[WEBHOOK] Driver info saved: chat_id={chat_id} name={driver_name}")
 
     # Если платёж уже создан — отправляем сохранённую ссылку
     if order.get("payment_url"):
@@ -183,10 +197,10 @@ def handler(event: dict, context) -> dict:
         payment_id = payment.get("id", "")
         print(f"[WEBHOOK] Payment created: id={payment_id} url={confirmation_url}")
 
-        # Сохраняем payment_id и url в БД
+        # Сохраняем payment_id, url и данные водителя в БД
         cur.execute(
-            "UPDATE t_p16564901_site_launch_bot.orders SET payment_id = %s, payment_url = %s, status = 'accepted' WHERE id = %s::uuid",
-            (payment_id, confirmation_url, order_id)
+            "UPDATE t_p16564901_site_launch_bot.orders SET payment_id = %s, payment_url = %s, status = 'accepted', driver_chat_id = %s, driver_username = %s, driver_name = %s WHERE id = %s::uuid",
+            (payment_id, confirmation_url, chat_id, driver_username, driver_name, order_id)
         )
         conn.commit()
         cur.close()
