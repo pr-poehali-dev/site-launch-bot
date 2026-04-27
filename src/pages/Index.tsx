@@ -205,7 +205,7 @@ export default function Index() {
             {section === "in_progress" && <OrdersList apiUrl={ORDERS_API} filterStatus="in_progress" tgApiUrl={TG_API} />}
             {section === "closed" && <OrdersList apiUrl={ORDERS_API} filterStatus="closed" tgApiUrl={TG_API} />}
             {section === "done" && <OrdersList apiUrl={ORDERS_API} filterStatus="done" tgApiUrl={TG_API} />}
-            {section === "cancelled" && <OrdersList apiUrl={ORDERS_API} filterStatus="cancelled" tgApiUrl={TG_API} />}
+            {section === "cancelled" && <OrdersList apiUrl={ORDERS_API} filterStatus="cancelled,no_driver" tgApiUrl={TG_API} />}
           </div>
         </main>
       </div>

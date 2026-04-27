@@ -32,6 +32,8 @@ export const statusConfig: Record<string, { label: string; color: string; bg: st
   closed:      { label: "Закрыт",           color: "text-orange-400",       bg: "bg-orange-500/10 border-orange-500/30" },
   done:        { label: "Завершен",         color: "text-muted-foreground", bg: "bg-muted/30 border-border" },
   cancelled:   { label: "Удалён",           color: "text-red-400",          bg: "bg-red-500/10 border-red-500/30" },
+  no_driver:   { label: "Нет машин",        color: "text-orange-400",       bg: "bg-orange-500/10 border-orange-500/30" },
+  accepted:    { label: "На продаже",       color: "text-yellow-400",       bg: "bg-yellow-500/10 border-yellow-500/30" },
 };
 
 export const STATUSES = ["new", "on_sale", "in_progress", "closed", "done"];
