@@ -908,21 +908,22 @@ def handler(event: dict, context) -> dict:
         plan_key = text.replace("/start sub_", "").strip()
         handle_subscribe(chat_id, plan_key, driver_name, driver_username)
 
-    # /start или /start без параметров — главное меню
+    # /start или /start без параметров — главное меню (только в личке)
     elif text.startswith("/start") or text == "/menu":
-        user_id = from_info.get("id") or chat_id
         chat_type = message.get("chat", {}).get("type", "private")
-        conn = get_conn()
-        cur = conn.cursor(cursor_factory=RealDictCursor)
-        sub = get_active_subscription(cur, user_id)
-        cur.close(); conn.close()
-        target_id = user_id if chat_type in ("group", "supergroup") else chat_id
-        tg_send(
-            target_id,
-            f"👋 Добро пожаловать, <b>{driver_name or 'водитель'}</b>!\n\nВыберите действие:",
-            reply_markup=MAIN_KEYBOARD
-        )
-        send_subscription_menu(target_id, sub)
+        if chat_type in ("group", "supergroup"):
+            pass  # В группе /start игнорируем
+        else:
+            conn = get_conn()
+            cur = conn.cursor(cursor_factory=RealDictCursor)
+            sub = get_active_subscription(cur, chat_id)
+            cur.close(); conn.close()
+            tg_send(
+                chat_id,
+                f"👋 Добро пожаловать, <b>{driver_name or 'водитель'}</b>!\n\nВыберите действие:",
+                reply_markup=MAIN_KEYBOARD
+            )
+            send_subscription_menu(chat_id, sub)
 
     # /mystatus или кнопка «Мой статус»
     elif text in ("/mystatus", "📊 Мой статус"):
