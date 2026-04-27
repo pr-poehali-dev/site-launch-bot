@@ -100,6 +100,15 @@ def get_active_subscription(cur, chat_id: int) -> dict | None:
     return dict(row) if row else None
 
 
+MAIN_KEYBOARD = {
+    "keyboard": [
+        [{"text": "💳 Подписка"}, {"text": "📊 Мой статус"}],
+    ],
+    "resize_keyboard": True,
+    "persistent": True,
+}
+
+
 def send_subscription_menu(chat_id: int, sub: dict | None = None):
     if sub:
         expires = sub["expires_at"]
@@ -907,13 +916,16 @@ def handler(event: dict, context) -> dict:
         cur = conn.cursor(cursor_factory=RealDictCursor)
         sub = get_active_subscription(cur, user_id)
         cur.close(); conn.close()
-        if chat_type in ("group", "supergroup"):
-            send_subscription_menu(user_id, sub)
-        else:
-            send_subscription_menu(chat_id, sub)
+        target_id = user_id if chat_type in ("group", "supergroup") else chat_id
+        tg_send(
+            target_id,
+            f"👋 Добро пожаловать, <b>{driver_name or 'водитель'}</b>!\n\nВыберите действие:",
+            reply_markup=MAIN_KEYBOARD
+        )
+        send_subscription_menu(target_id, sub)
 
-    # /mystatus — статус подписки
-    elif text == "/mystatus":
+    # /mystatus или кнопка «Мой статус»
+    elif text in ("/mystatus", "📊 Мой статус"):
         conn = get_conn()
         cur = conn.cursor(cursor_factory=RealDictCursor)
         sub = get_active_subscription(cur, chat_id)
@@ -921,11 +933,20 @@ def handler(event: dict, context) -> dict:
         if sub:
             expires = sub["expires_at"]
             expires_str = expires.strftime("%d.%m.%Y") if hasattr(expires, "strftime") else str(expires)[:10]
-            tg_send(chat_id, f"✅ <b>Подписка активна</b>\nДо: <b>{expires_str}</b>\nКомиссия: <b>10%</b>")
+            tg_send(chat_id, f"✅ <b>Подписка активна</b>\nДо: <b>{expires_str}</b>\nКомиссия: <b>10%</b>", reply_markup=MAIN_KEYBOARD)
         else:
+            tg_send(chat_id, "❌ <b>Подписка не активна</b>\nВаша комиссия: <b>15%</b>", reply_markup=MAIN_KEYBOARD)
             send_subscription_menu(chat_id)
 
+    # Кнопка «Подписка»
+    elif text == "💳 Подписка":
+        conn = get_conn()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        sub = get_active_subscription(cur, chat_id)
+        cur.close(); conn.close()
+        send_subscription_menu(chat_id, sub)
+
     elif message.get("chat", {}).get("type", "private") == "private":
-        tg_send(chat_id, "Используй /start чтобы открыть меню подписок.")
+        tg_send(chat_id, "Используй кнопки меню или /start.", reply_markup=MAIN_KEYBOARD)
 
     return {"statusCode": 200, "headers": CORS_HEADERS, "body": json.dumps({"ok": True})}
