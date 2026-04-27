@@ -126,7 +126,8 @@ def send_subscription_menu(chat_id: int, sub: dict | None = None):
                 [{"text": "🗓 12 месяцев — 10 000 ₽"}],
             ],
             "resize_keyboard": True,
-            "one_time_keyboard": True,
+            "one_time_keyboard": False,
+            "persistent": True,
         }
     )
 
