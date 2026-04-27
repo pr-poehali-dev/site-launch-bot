@@ -82,6 +82,11 @@ export default function OrdersList({ apiUrl, tgApiUrl, filterStatus }: Props) {
     });
   };
 
+  const markOnSale = async (order: Order) => {
+    await updateStatus(order.id, "on_sale");
+    showToast("success", "Заказ выставлен на продажу!");
+  };
+
   const deleteOrder = async (id: string) => {
     setOrders((prev) => prev.filter((o) => o.id !== id));
     setSelected(null);
@@ -226,9 +231,19 @@ export default function OrdersList({ apiUrl, tgApiUrl, filterStatus }: Props) {
                       </span>
                     </td>
                     <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                      <button onClick={() => deleteOrder(order.id)} className="p-1.5 rounded hover:bg-red-500/10 text-muted-foreground hover:text-red-400 transition-all">
-                        <Icon name="Trash2" size={13} />
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => markOnSale(order)}
+                          disabled={order.status === "on_sale"}
+                          title="Продать заказ"
+                          className="p-1.5 rounded hover:bg-yellow-500/10 text-muted-foreground hover:text-yellow-400 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                        >
+                          <Icon name="Tag" size={13} />
+                        </button>
+                        <button onClick={() => deleteOrder(order.id)} className="p-1.5 rounded hover:bg-red-500/10 text-muted-foreground hover:text-red-400 transition-all">
+                          <Icon name="Trash2" size={13} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -320,7 +335,7 @@ export default function OrdersList({ apiUrl, tgApiUrl, filterStatus }: Props) {
             </div>
           )}
 
-          <div className="mb-4 pb-4 border-b border-border">
+          <div className="mb-4 pb-4 border-b border-border flex flex-wrap gap-2">
             <button
               onClick={() => sendToTelegram(selected)}
               disabled={sending || selected.status === "on_sale"}
@@ -328,6 +343,14 @@ export default function OrdersList({ apiUrl, tgApiUrl, filterStatus }: Props) {
             >
               <Icon name={sending ? "Loader" : "Send"} size={15} className={sending ? "animate-spin" : ""} />
               {sending ? "Отправляю..." : selected.status === "on_sale" ? "Уже на продаже" : "Отправить в группу"}
+            </button>
+            <button
+              onClick={() => markOnSale(selected)}
+              disabled={selected.status === "on_sale"}
+              className="flex items-center gap-2 px-4 py-2.5 bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/30 disabled:opacity-40 disabled:cursor-not-allowed text-yellow-400 text-sm font-semibold rounded-lg transition-all"
+            >
+              <Icon name="Tag" size={15} />
+              {selected.status === "on_sale" ? "На продаже" : "Продать заказ"}
             </button>
           </div>
 
