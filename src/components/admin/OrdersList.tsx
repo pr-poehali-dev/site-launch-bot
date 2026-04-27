@@ -83,8 +83,7 @@ export default function OrdersList({ apiUrl, tgApiUrl, filterStatus }: Props) {
   };
 
   const markOnSale = async (order: Order) => {
-    await updateStatus(order.id, "on_sale");
-    showToast("success", "Заказ выставлен на продажу!");
+    await sendToTelegram(order);
   };
 
   const deleteOrder = async (id: string) => {
