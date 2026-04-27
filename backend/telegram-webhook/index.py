@@ -416,10 +416,30 @@ def handle_accept_order(chat_id: int, order_id: str, driver_name: str, driver_us
     else:
         # Сообщаем водителю что он в очереди
         display = f"@{driver_username}" if driver_username else driver_name or "Вы"
+
+        # Ищем того, кто стоит перед ним (позиция - 1)
+        prev_driver = None
+        for q in queue:
+            if q["position"] == position - 1:
+                prev_driver = q
+                break
+
+        if prev_driver:
+            prev_display = f"@{prev_driver['driver_username']}" if prev_driver.get("driver_username") else prev_driver.get("driver_name") or "участник"
+            queue_msg = (
+                f"Вы на позиции #{position}.\n"
+                f"Перед вами: <b>{prev_display}</b>.\n"
+                f"Если он не оплатит комиссию в течение {PAYMENT_TIMEOUT_MINUTES} минут — заказ перейдёт к вам."
+            )
+        else:
+            queue_msg = (
+                f"Вы на позиции #{position}.\n"
+                f"Если первый участник не оплатит комиссию в течение {PAYMENT_TIMEOUT_MINUTES} минут — заказ перейдёт к вам."
+            )
+
         tg_send(
             chat_id,
-            f"👆 <b>{display}, вы в очереди!</b>\n\n"
-            f"Вы на позиции #{position}. Если первый водитель не оплатит в течение {PAYMENT_TIMEOUT_MINUTES} минут, заказ перейдёт к вам."
+            f"👆 <b>{display}, вы в очереди!</b>\n\n{queue_msg}"
         )
         cur.close(); conn.close()
 
