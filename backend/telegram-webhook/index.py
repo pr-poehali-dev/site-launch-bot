@@ -762,6 +762,13 @@ def handler(event: dict, context) -> dict:
 
     print(f"[WEBHOOK] update: {json.dumps(body)[:600]}")
 
+    # Автопроверка истёкших платежей при каждом входящем запросе
+    try:
+        group_chat_id = os.environ.get("TELEGRAM_GROUP_ID", "")
+        check_expired_payments(group_chat_id)
+    except Exception as e:
+        print(f"[EXPIRED] check error: {e}")
+
     # Обработка нажатия inline-кнопок (callback_query)
     callback = body.get("callback_query")
     if callback:
