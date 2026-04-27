@@ -82,16 +82,13 @@ export default function OrderDetailPanel({
             ))}
           </div>
 
-          {(selected.booster || selected.child_seat || selected.animal) && (
-            <div className="flex gap-2 mb-4">
-              {selected.booster && <span className="text-xs px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">Бустер</span>}
-              {selected.child_seat && <span className="text-xs px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">Детское кресло</span>}
-              {selected.animal && <span className="text-xs px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">Животное</span>}
+          {(selected.booster || selected.child_seat || selected.animal || selected.comment) && (
+            <div className="mb-4 p-3 bg-muted/30 rounded-lg flex flex-col gap-1.5">
+              {selected.booster && <span className="text-xs text-foreground">🪑 Бустер</span>}
+              {selected.child_seat && <span className="text-xs text-foreground">👶 Детское кресло</span>}
+              {selected.animal && <span className="text-xs text-foreground">🐾 Животное</span>}
+              {selected.comment && <span className="text-xs text-muted-foreground">💬 {selected.comment}</span>}
             </div>
-          )}
-
-          {selected.comment && (
-            <div className="mb-4 p-3 bg-muted/30 rounded-lg text-xs text-muted-foreground">{selected.comment}</div>
           )}
         </>
       )}
