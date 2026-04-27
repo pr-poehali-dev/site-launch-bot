@@ -565,7 +565,7 @@ def check_expired_payments(group_chat_id: str):
             f"Заказ передан следующему водителю."
         )
         if driver_msg_id:
-            tg_edit(driver_chat_id, driver_msg_id, expired_text, reply_markup=None)
+            tg_edit(driver_chat_id, driver_msg_id, expired_text, reply_markup={"inline_keyboard": []})
         else:
             tg_send(driver_chat_id, expired_text)
 

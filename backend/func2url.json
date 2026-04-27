@@ -1,4 +1,5 @@
 {
+  "queue-cron": "https://functions.poehali.dev/485f4e9c-af8f-49a9-8eea-b3be52b0066a",
   "telegram-webhook": "https://functions.poehali.dev/06f62334-3744-4817-84a2-fee6b379c230",
   "send-telegram": "https://functions.poehali.dev/ed779d34-4d03-4202-baa8-7d25732d1aaa",
   "orders": "https://functions.poehali.dev/55980dcf-a1ce-4d33-acc5-93fea15cb52c"
