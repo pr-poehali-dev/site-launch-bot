@@ -201,7 +201,7 @@ export default function Index() {
               <OrderForm onSave={handleSaveOrder} saving={saving} />
             )}
             {section === "all" && <OrdersList apiUrl={ORDERS_API} filterStatus="all" tgApiUrl={TG_API} />}
-            {section === "on_sale" && <OrdersList apiUrl={ORDERS_API} filterStatus="on_sale" tgApiUrl={TG_API} />}
+            {section === "on_sale" && <OrdersList apiUrl={ORDERS_API} filterStatus="on_sale,accepted" tgApiUrl={TG_API} />}
             {section === "in_progress" && <OrdersList apiUrl={ORDERS_API} filterStatus="in_progress" tgApiUrl={TG_API} />}
             {section === "closed" && <OrdersList apiUrl={ORDERS_API} filterStatus="closed" tgApiUrl={TG_API} />}
             {section === "done" && <OrdersList apiUrl={ORDERS_API} filterStatus="done" tgApiUrl={TG_API} />}

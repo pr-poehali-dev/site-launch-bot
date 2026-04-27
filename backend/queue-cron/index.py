@@ -262,6 +262,32 @@ def run_check():
     now = datetime.now(timezone.utc)
     warn_at = now + timedelta(minutes=1)
 
+    # Автопереход in_progress → done через 1 час после времени подачи
+    cur.execute(
+        f"""
+        SELECT id, trip_date, trip_time FROM {SCHEMA}.orders
+        WHERE status = 'in_progress'
+          AND trip_date IS NOT NULL
+          AND trip_time IS NOT NULL
+          AND trip_time != ''
+        """
+    )
+    in_progress_orders = [dict(r) for r in cur.fetchall()]
+    for order in in_progress_orders:
+        try:
+            trip_dt_str = f"{order['trip_date']} {order['trip_time']}"
+            trip_dt = datetime.strptime(trip_dt_str, "%Y-%m-%d %H:%M").replace(tzinfo=timezone.utc)
+            done_at = trip_dt + timedelta(hours=1)
+            if now >= done_at:
+                cur.execute(
+                    f"UPDATE {SCHEMA}.orders SET status = 'done' WHERE id = %s",
+                    (order["id"],)
+                )
+                print(f"[CRON] Order {order['id']} auto-completed (trip_time+1h passed)")
+        except Exception as e:
+            print(f"[CRON] Error parsing trip_time for order {order['id']}: {e}")
+    conn.commit()
+
     # Уведомляем следующего за ~1 минуту до истечения
     cur.execute(
         f"""

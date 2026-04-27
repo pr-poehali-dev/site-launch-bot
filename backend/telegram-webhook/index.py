@@ -740,9 +740,9 @@ def handle_commission_paid(payment: dict, conn, cur):
         return
     order = dict(order)
 
-    # Помечаем заказ оплаченным
+    # Переводим заказ в статус "выполняется"
     cur.execute(
-        f"UPDATE {SCHEMA}.orders SET status = 'paid' WHERE id = %s::uuid",
+        f"UPDATE {SCHEMA}.orders SET status = 'in_progress' WHERE id = %s::uuid",
         (order_id,)
     )
 

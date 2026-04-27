@@ -134,9 +134,10 @@ export default function OrdersList({ apiUrl, tgApiUrl, filterStatus }: Props) {
     });
   };
 
+  const statusList = filterStatus.split(",").map((s) => s.trim());
   const filtered = filterStatus === "all"
     ? orders
-    : orders.filter((o) => o.status === filterStatus);
+    : orders.filter((o) => statusList.includes(o.status));
 
   return (
     <div className="space-y-4">
