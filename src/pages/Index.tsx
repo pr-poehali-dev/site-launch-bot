@@ -13,7 +13,6 @@ const navItems: { id: Section; label: string; icon: string; status?: string; div
   { id: "all", label: "Все заказы", icon: "ClipboardList", divider: true },
   { id: "on_sale", label: "На продаже", icon: "Tag", status: "on_sale" },
   { id: "in_progress", label: "Выполняется", icon: "Car", status: "in_progress" },
-  { id: "closed", label: "Закрыт", icon: "Clock", status: "closed" },
   { id: "done", label: "Завершен", icon: "CheckCircle", status: "done" },
   { id: "cancelled", label: "Удалённые", icon: "Trash2", status: "cancelled" },
 ];
