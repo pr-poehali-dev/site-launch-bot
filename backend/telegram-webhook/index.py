@@ -615,7 +615,9 @@ def handle_decline_order(chat_id: int, order_id: str, msg_id: int | None):
     declined_text = "🚫 <b>Вы отказались от заказа</b>\n\nЗаказ передан следующему водителю."
     if msg_id:
         tg_edit(chat_id, msg_id, declined_text, reply_markup={"inline_keyboard": []})
-    tg_send(chat_id, declined_text, reply_markup=MAIN_KEYBOARD)
+        tg_send(chat_id, "↩️ Вы вернулись в главное меню.", reply_markup=MAIN_KEYBOARD)
+    else:
+        tg_send(chat_id, declined_text, reply_markup=MAIN_KEYBOARD)
 
     print(f"[DECLINE] driver={chat_id} declined order={order_id}")
 
