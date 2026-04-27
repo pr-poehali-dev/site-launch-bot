@@ -776,10 +776,12 @@ def handler(event: dict, context) -> dict:
     # /start accept_<order_id>
     elif text.startswith("/start accept_"):
         order_id = text.replace("/start accept_", "").strip()
-        # Проверяем просроченные платежи перед обработкой
-        group_chat_id = os.environ.get("TELEGRAM_GROUP_ID", "")
-        check_expired_payments(group_chat_id)
-        handle_accept_order(chat_id, order_id, driver_name, driver_username)
+        if not order_id:
+            tg_send(chat_id, "❌ Неверная ссылка на заказ. Попробуйте нажать кнопку ещё раз.")
+        else:
+            group_chat_id = os.environ.get("TELEGRAM_GROUP_ID", "")
+            check_expired_payments(group_chat_id)
+            handle_accept_order(chat_id, order_id, driver_name, driver_username)
 
     # /start sub_<plan>
     elif text.startswith("/start sub_"):
