@@ -351,9 +351,9 @@ def handle_accept_order(chat_id: int, order_id: str, driver_name: str, driver_us
         tg_send(chat_id, "✅ Этот заказ уже выкуплен другим водителем.")
         return
 
-    # Проверяем — уже в очереди?
+    # Проверяем — уже в очереди? (только активные записи)
     cur.execute(
-        f"SELECT * FROM {SCHEMA}.order_queue WHERE order_id = %s::uuid AND driver_chat_id = %s",
+        f"SELECT * FROM {SCHEMA}.order_queue WHERE order_id = %s::uuid AND driver_chat_id = %s AND status NOT IN ('expired')",
         (order_id, chat_id)
     )
     existing_queue = cur.fetchone()
