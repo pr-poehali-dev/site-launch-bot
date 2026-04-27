@@ -313,7 +313,10 @@ def notify_next_in_queue(order_id: str, group_chat_id: str):
         sent = tg_send(
             driver_chat_id,
             order_info,
-            reply_markup={"inline_keyboard": [[{"text": "💳 Оплатить комиссию", "url": payment_url}]]}
+            reply_markup={"inline_keyboard": [
+                [{"text": "💳 Оплатить комиссию", "url": payment_url}],
+                [{"text": "❌ Отказаться от заказа", "callback_data": f"decline_{order_id}"}],
+            ]}
         )
         driver_msg_id = sent.get("result", {}).get("message_id") if sent else None
         if driver_msg_id:
@@ -569,6 +572,56 @@ def check_expired_payments(group_chat_id: str):
             tg_send(driver_chat_id, expired_text)
 
         notify_next_in_queue(order_id, group_chat_id)
+
+
+def handle_decline_order(chat_id: int, order_id: str, msg_id: int | None):
+    conn = get_conn()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+
+    cur.execute(
+        f"SELECT * FROM {SCHEMA}.order_queue WHERE order_id = %s::uuid AND driver_chat_id = %s AND status = 'paying'",
+        (order_id, chat_id)
+    )
+    queue_row = cur.fetchone()
+
+    if not queue_row:
+        cur.close(); conn.close()
+        return
+
+    queue_row = dict(queue_row)
+    group_chat_id = os.environ.get("TELEGRAM_GROUP_ID", "")
+
+    # Помечаем как expired
+    cur.execute(
+        f"UPDATE {SCHEMA}.order_queue SET status = 'expired' WHERE id = %s",
+        (queue_row["id"],)
+    )
+    cur.execute(
+        f"UPDATE {SCHEMA}.orders SET active_queue_driver_chat_id = NULL WHERE id = %s::uuid AND active_queue_driver_chat_id = %s",
+        (order_id, chat_id)
+    )
+    conn.commit()
+
+    # Обновляем сообщение в группе — убираем ник
+    cur.execute(f"SELECT * FROM {SCHEMA}.orders WHERE id = %s::uuid", (order_id,))
+    order_row = cur.fetchone()
+    if order_row:
+        queue_upd = get_queue_list(cur, order_id)
+        update_group_message(dict(order_row), queue_upd, group_chat_id)
+
+    cur.close(); conn.close()
+
+    # Редактируем сообщение водителю — убираем кнопки
+    declined_text = "🚫 <b>Вы отказались от заказа</b>\n\nЗаказ передан следующему водителю."
+    if msg_id:
+        tg_edit(chat_id, msg_id, declined_text, reply_markup={"inline_keyboard": []})
+    else:
+        tg_send(chat_id, declined_text)
+
+    print(f"[DECLINE] driver={chat_id} declined order={order_id}")
+
+    # Передаём следующему
+    notify_next_in_queue(order_id, group_chat_id)
 
 
 def handle_subscribe(chat_id: int, plan_key: str, driver_name: str, driver_username: str):
@@ -875,6 +928,11 @@ def handler(event: dict, context) -> dict:
         if cb_data.startswith("sub_"):
             plan_key = cb_data.replace("sub_", "", 1)
             handle_subscribe(chat_id, plan_key, driver_name, driver_username)
+
+        elif cb_data.startswith("decline_"):
+            order_id = cb_data.replace("decline_", "", 1)
+            msg_id = callback.get("message", {}).get("message_id")
+            handle_decline_order(chat_id, order_id, msg_id)
 
         return {"statusCode": 200, "headers": CORS_HEADERS, "body": json.dumps({"ok": True})}
 
