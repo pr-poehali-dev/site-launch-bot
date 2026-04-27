@@ -103,6 +103,7 @@ def get_active_subscription(cur, chat_id: int) -> dict | None:
 MAIN_KEYBOARD = {
     "keyboard": [
         [{"text": "💳 Подписка"}, {"text": "📊 Мой статус"}],
+        [{"text": "📅 1 месяц — 1 500 ₽"}, {"text": "📆 6 мес — 6 000 ₽"}, {"text": "🗓 12 мес — 10 000 ₽"}],
     ],
     "resize_keyboard": True,
     "persistent": True,
@@ -117,26 +118,16 @@ def send_subscription_menu(chat_id: int, sub: dict | None = None):
             f"✅ <b>Подписка активна</b>\n"
             f"Действует до: <b>{expires_str}</b>\n"
             f"Ваша комиссия: <b>10%</b>\n\n"
-            f"Выберите тариф для продления:"
+            f"Нажмите тариф ниже для продления:"
         )
     else:
         header = (
             f"💳 <b>Подписка на сервис</b>\n\n"
             f"С подпиской комиссия снижается с <b>15%</b> до <b>10%</b>.\n"
-            f"Выберите тариф:"
+            f"Нажмите тариф ниже:"
         )
 
-    tg_send(
-        chat_id,
-        header,
-        reply_markup={
-            "inline_keyboard": [
-                [{"text": "📅 1 месяц — 1 500 ₽", "callback_data": "sub_1m"}],
-                [{"text": "📆 6 месяцев — 6 000 ₽", "callback_data": "sub_6m"}],
-                [{"text": "🗓 12 месяцев — 10 000 ₽", "callback_data": "sub_12m"}],
-            ]
-        }
-    )
+    tg_send(chat_id, header, reply_markup=MAIN_KEYBOARD)
 
 
 def get_queue_list(cur, order_id: str) -> list:
@@ -946,6 +937,16 @@ def handler(event: dict, context) -> dict:
         sub = get_active_subscription(cur, chat_id)
         cur.close(); conn.close()
         send_subscription_menu(chat_id, sub)
+
+    # Кнопки тарифов из reply_keyboard
+    elif text in ("📅 1 месяц — 1 500 ₽", "📆 6 мес — 6 000 ₽", "🗓 12 мес — 10 000 ₽"):
+        plan_map = {
+            "📅 1 месяц — 1 500 ₽": "1m",
+            "📆 6 мес — 6 000 ₽":   "6m",
+            "🗓 12 мес — 10 000 ₽":  "12m",
+        }
+        plan_key = plan_map[text]
+        handle_subscribe(chat_id, plan_key, driver_name, driver_username)
 
     elif message.get("chat", {}).get("type", "private") == "private":
         tg_send(chat_id, "Используй кнопки меню или /start.", reply_markup=MAIN_KEYBOARD)
