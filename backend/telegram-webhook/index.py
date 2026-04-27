@@ -122,9 +122,8 @@ def send_subscription_menu(chat_id: int, sub: dict | None = None):
         )
     else:
         header = (
-            f"💳 <b>Подписка на сервис</b>\n\n"
-            f"С подпиской комиссия снижается с <b>15%</b> до <b>10%</b>.\n"
-            f"Нажмите тариф ниже:"
+            f"👋 Приобрети подписку на сервис\n\n"
+            f"С подпиской комиссия снижается с <b>15%</b> до <b>10%</b>."
         )
 
     tg_send(chat_id, header, reply_markup=MAIN_KEYBOARD)
@@ -975,11 +974,6 @@ def handler(event: dict, context) -> dict:
             cur = conn.cursor(cursor_factory=RealDictCursor)
             sub = get_active_subscription(cur, chat_id)
             cur.close(); conn.close()
-            tg_send(
-                chat_id,
-                f"👋 Добро пожаловать, <b>{driver_name or 'водитель'}</b>!\n\nВыберите действие:",
-                reply_markup=MAIN_KEYBOARD
-            )
             send_subscription_menu(chat_id, sub)
 
     # /mystatus или кнопка «Мой статус»
