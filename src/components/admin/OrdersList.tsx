@@ -48,6 +48,9 @@ export default function OrdersList({ apiUrl, tgApiUrl, filterStatus }: Props) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Order | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [editForm, setEditForm] = useState<Partial<Order>>({});
+  const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
   const [toast, setToast] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
@@ -84,6 +87,32 @@ export default function OrdersList({ apiUrl, tgApiUrl, filterStatus }: Props) {
 
   const markOnSale = async (order: Order) => {
     await sendToTelegram(order);
+  };
+
+  const startEdit = (order: Order) => {
+    setEditForm({ ...order });
+    setEditing(true);
+  };
+
+  const saveEdit = async () => {
+    if (!selected) return;
+    setSaving(true);
+    try {
+      await fetch(apiUrl, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...editForm, id: selected.id }),
+      });
+      const updated = { ...selected, ...editForm } as Order;
+      setOrders((prev) => prev.map((o) => o.id === selected.id ? updated : o));
+      setSelected(updated);
+      setEditing(false);
+      showToast("success", "Заказ сохранён!");
+    } catch {
+      showToast("error", "Ошибка сохранения");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const deleteOrder = async (id: string) => {
@@ -265,11 +294,126 @@ export default function OrdersList({ apiUrl, tgApiUrl, filterStatus }: Props) {
                 <div className="text-[10px] text-muted-foreground mono">{selected.id.slice(0, 16)}...</div>
               </div>
             </div>
-            <button onClick={() => setSelected(null)} className="text-muted-foreground hover:text-foreground p-1">
-              <Icon name="X" size={16} />
-            </button>
+            <div className="flex items-center gap-2">
+              {!editing ? (
+                <button onClick={() => startEdit(selected)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted/40 hover:bg-muted/70 text-muted-foreground hover:text-foreground text-xs font-medium transition-all">
+                  <Icon name="Pencil" size={13} />
+                  Редактировать
+                </button>
+              ) : (
+                <button onClick={() => setEditing(false)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted/40 hover:bg-muted/70 text-muted-foreground text-xs transition-all">
+                  Отмена
+                </button>
+              )}
+              <button onClick={() => { setSelected(null); setEditing(false); }} className="text-muted-foreground hover:text-foreground p-1">
+                <Icon name="X" size={16} />
+              </button>
+            </div>
           </div>
 
+          {editing ? (
+            <div className="mb-4">
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                {[
+                  { label: "Откуда (город)", key: "from_city" },
+                  { label: "Куда (город)", key: "to_city" },
+                  { label: "Адрес подачи", key: "pickup" },
+                  { label: "Адрес назначения", key: "dropoff" },
+                  { label: "Телефон клиента", key: "phone" },
+                  { label: "Тариф", key: "tariff" },
+                ].map(({ label, key }) => (
+                  <div key={key}>
+                    <div className="text-[10px] text-muted-foreground mono uppercase tracking-wider mb-1">{label}</div>
+                    <input
+                      className="w-full bg-muted/30 border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-blue-500/50"
+                      value={(editForm as Record<string, string>)[key] ?? ""}
+                      onChange={(e) => setEditForm((f) => ({ ...f, [key]: e.target.value }))}
+                    />
+                  </div>
+                ))}
+                <div>
+                  <div className="text-[10px] text-muted-foreground mono uppercase tracking-wider mb-1">Дата</div>
+                  <input
+                    type="date"
+                    className="w-full bg-muted/30 border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-blue-500/50"
+                    value={editForm.trip_date ?? ""}
+                    onChange={(e) => setEditForm((f) => ({ ...f, trip_date: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <div className="text-[10px] text-muted-foreground mono uppercase tracking-wider mb-1">Время</div>
+                  <input
+                    type="time"
+                    className="w-full bg-muted/30 border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-blue-500/50"
+                    value={editForm.trip_time ?? ""}
+                    onChange={(e) => setEditForm((f) => ({ ...f, trip_time: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <div className="text-[10px] text-muted-foreground mono uppercase tracking-wider mb-1">Цена ₽</div>
+                  <input
+                    type="number"
+                    className="w-full bg-muted/30 border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-blue-500/50"
+                    value={editForm.price ?? ""}
+                    onChange={(e) => setEditForm((f) => ({ ...f, price: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <div className="text-[10px] text-muted-foreground mono uppercase tracking-wider mb-1">Пассажиры</div>
+                  <input
+                    type="number" min={1} max={20}
+                    className="w-full bg-muted/30 border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-blue-500/50"
+                    value={editForm.passengers ?? 1}
+                    onChange={(e) => setEditForm((f) => ({ ...f, passengers: Number(e.target.value) }))}
+                  />
+                </div>
+                <div>
+                  <div className="text-[10px] text-muted-foreground mono uppercase tracking-wider mb-1">Багаж</div>
+                  <input
+                    type="number" min={0} max={20}
+                    className="w-full bg-muted/30 border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-blue-500/50"
+                    value={editForm.luggage ?? 0}
+                    onChange={(e) => setEditForm((f) => ({ ...f, luggage: Number(e.target.value) }))}
+                  />
+                </div>
+              </div>
+              <div className="mb-3">
+                <div className="text-[10px] text-muted-foreground mono uppercase tracking-wider mb-1">Комментарий</div>
+                <textarea
+                  rows={2}
+                  className="w-full bg-muted/30 border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-blue-500/50 resize-none"
+                  value={editForm.comment ?? ""}
+                  onChange={(e) => setEditForm((f) => ({ ...f, comment: e.target.value }))}
+                />
+              </div>
+              <div className="flex gap-4 mb-3">
+                {[
+                  { key: "booster", label: "Бустер" },
+                  { key: "child_seat", label: "Детское кресло" },
+                  { key: "animal", label: "Животное" },
+                ].map(({ key, label }) => (
+                  <label key={key} className="flex items-center gap-2 cursor-pointer text-sm text-muted-foreground">
+                    <input
+                      type="checkbox"
+                      checked={!!(editForm as Record<string, boolean>)[key]}
+                      onChange={(e) => setEditForm((f) => ({ ...f, [key]: e.target.checked }))}
+                      className="accent-blue-500"
+                    />
+                    {label}
+                  </label>
+                ))}
+              </div>
+              <button
+                onClick={saveEdit}
+                disabled={saving}
+                className="flex items-center gap-2 px-4 py-2.5 bg-blue-500 hover:bg-blue-600 disabled:opacity-40 text-white text-sm font-semibold rounded-lg transition-all"
+              >
+                <Icon name={saving ? "Loader" : "Save"} size={15} className={saving ? "animate-spin" : ""} />
+                {saving ? "Сохраняю..." : "Сохранить изменения"}
+              </button>
+            </div>
+          ) : (
+            <>
           <div className="grid grid-cols-4 gap-3 mb-4">
             {[
               { label: "Дата", value: formatDate(selected.trip_date) },
@@ -298,6 +442,8 @@ export default function OrdersList({ apiUrl, tgApiUrl, filterStatus }: Props) {
 
           {selected.comment && (
             <div className="mb-4 p-3 bg-muted/30 rounded-lg text-xs text-muted-foreground">{selected.comment}</div>
+          )}
+            </>
           )}
 
           {selected.driver_chat_id ? (

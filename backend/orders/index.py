@@ -92,22 +92,63 @@ def handler(event: dict, context) -> dict:
 
     if method == "PUT":
         order_id = body.get("id")
-        status = body.get("status")
-        if not order_id or not status:
-            cur.close()
-            conn.close()
-            return {"statusCode": 400, "headers": CORS_HEADERS, "body": json.dumps({"error": "id and status required"})}
+        if not order_id:
+            cur.close(); conn.close()
+            return {"statusCode": 400, "headers": CORS_HEADERS, "body": json.dumps({"error": "id required"})}
+
+        # Если передан только статус — быстрое обновление
+        if list(body.keys()) == ["id", "status"]:
+            status = body.get("status")
+            cur.execute(
+                "UPDATE t_p16564901_site_launch_bot.orders SET status = %s WHERE id = %s::uuid RETURNING id::text, status",
+                (status, order_id)
+            )
+            row = cur.fetchone()
+            conn.commit(); cur.close(); conn.close()
+            if not row:
+                return {"statusCode": 404, "headers": CORS_HEADERS, "body": json.dumps({"error": "not found"})}
+            return {"statusCode": 200, "headers": CORS_HEADERS, "body": json.dumps({"order": dict(row)})}
+
+        # Полное обновление заказа
+        price = float(body.get("price", 0) or 0)
+        commission_str = body.get("commission", "15%")
+        commission_pct = float(commission_str.replace("%", "")) / 100
+        driver_amount = round(price * (1 - commission_pct), 2)
+
+        fields = {
+            "from_city":     body.get("from_city", ""),
+            "to_city":       body.get("to_city", ""),
+            "pickup":        body.get("pickup", ""),
+            "dropoff":       body.get("dropoff", ""),
+            "trip_date":     body.get("trip_date", ""),
+            "trip_time":     body.get("trip_time", ""),
+            "price":         price,
+            "tariff":        body.get("tariff", ""),
+            "commission":    commission_str,
+            "driver_amount": driver_amount,
+            "phone":         body.get("phone", ""),
+            "passengers":    int(body.get("passengers", 1)),
+            "luggage":       int(body.get("luggage", 1)),
+            "booster":       bool(body.get("booster", False)),
+            "child_seat":    bool(body.get("child_seat", False)),
+            "animal":        bool(body.get("animal", False)),
+            "comment":       body.get("comment", ""),
+        }
+        if body.get("status"):
+            fields["status"] = body["status"]
+
+        set_clause = ", ".join(f"{k} = %s" for k in fields)
+        values = list(fields.values()) + [order_id]
+
         cur.execute(
-            "UPDATE t_p16564901_site_launch_bot.orders SET status = %s WHERE id = %s::uuid RETURNING id::text, status",
-            (status, order_id)
+            f"UPDATE t_p16564901_site_launch_bot.orders SET {set_clause} WHERE id = %s::uuid RETURNING id::text",
+            values
         )
         row = cur.fetchone()
-        conn.commit()
-        cur.close()
-        conn.close()
+        conn.commit(); cur.close(); conn.close()
         if not row:
             return {"statusCode": 404, "headers": CORS_HEADERS, "body": json.dumps({"error": "not found"})}
-        return {"statusCode": 200, "headers": CORS_HEADERS, "body": json.dumps({"order": dict(row)})}
+        return {"statusCode": 200, "headers": CORS_HEADERS, "body": json.dumps({"ok": True})}
 
     if method == "DELETE":
         order_id = body.get("id")
