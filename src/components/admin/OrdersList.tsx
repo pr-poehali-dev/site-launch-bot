@@ -225,25 +225,25 @@ export default function OrdersList({ apiUrl, tgApiUrl, filterStatus }: Props) {
                       <div className="text-sm mono text-foreground">{order.phone}</div>
                       <div className="text-xs text-muted-foreground">{order.passengers} чел · {order.luggage} баг.</div>
                     </td>
-                    <td className="px-4 py-3">
-                      <span className={`text-[11px] font-medium px-2.5 py-1 rounded-full border ${cfg.bg} ${cfg.color}`}>
-                        {cfg.label}
-                      </span>
+                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={`text-[11px] font-medium px-2.5 py-1 rounded-full border ${cfg.bg} ${cfg.color}`}>
+                          {cfg.label}
+                        </span>
+                        {order.status === "new" && (
+                          <button
+                            onClick={() => markOnSale(order)}
+                            className="text-[11px] font-medium px-2.5 py-1 rounded-full border bg-yellow-500/10 border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/20 transition-all"
+                          >
+                            Продать
+                          </button>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => markOnSale(order)}
-                          disabled={order.status === "on_sale"}
-                          title="Продать заказ"
-                          className="p-1.5 rounded hover:bg-yellow-500/10 text-muted-foreground hover:text-yellow-400 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-                        >
-                          <Icon name="Tag" size={13} />
-                        </button>
-                        <button onClick={() => deleteOrder(order.id)} className="p-1.5 rounded hover:bg-red-500/10 text-muted-foreground hover:text-red-400 transition-all">
-                          <Icon name="Trash2" size={13} />
-                        </button>
-                      </div>
+                      <button onClick={() => deleteOrder(order.id)} className="p-1.5 rounded hover:bg-red-500/10 text-muted-foreground hover:text-red-400 transition-all">
+                        <Icon name="Trash2" size={13} />
+                      </button>
                     </td>
                   </tr>
                 );
